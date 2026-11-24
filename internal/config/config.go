@@ -26,15 +26,6 @@ type Config struct {
 	Modules []string `yaml:"modules"`
 }
 
-// ModuleSet returns the modules to run. Load has already checked the names.
-func (c *Config) ModuleSet() modules.Set {
-	set, err := modules.NewSet(c.Modules)
-	if err != nil {
-		return modules.Set{}
-	}
-	return set
-}
-
 // ServerConfig holds HTTP server settings.
 type ServerConfig struct {
 	Host string `yaml:"host"`
@@ -63,6 +54,15 @@ type SeedConfig struct {
 type LogConfig struct {
 	// Level is one of debug, info, warn or error.
 	Level string `yaml:"level"`
+}
+
+// ModuleSet returns the modules to run. Load has already checked the names.
+func (c *Config) ModuleSet() modules.Set {
+	set, err := modules.NewSet(c.Modules)
+	if err != nil {
+		return modules.Set{}
+	}
+	return set
 }
 
 // Load reads the YAML configuration file at the given path and returns
