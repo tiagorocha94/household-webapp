@@ -1,5 +1,6 @@
 // The pages in the side menu, and the small rules around it.
 import { t, type MessageKey } from './i18n/index.svelte';
+import type { ModuleName } from './modules';
 
 export interface NavItem {
   /** The English name, which identifies the item; what is shown comes from `key` (see navLabel). */
@@ -11,6 +12,8 @@ export interface NavItem {
   icon: string;
   /** The first segments of the addresses that belong to this item; empty means only "/". */
   sections: string[];
+  /** The feature module the page belongs to; absent for pages that are always there. */
+  module?: ModuleName;
 }
 
 export const NAV: NavItem[] = [
@@ -21,6 +24,7 @@ export const NAV: NavItem[] = [
     path: '/cashflow',
     icon: 'arrow-left-right',
     sections: ['cashflow'],
+    module: 'cashflow',
   },
   {
     label: 'Net worth',
@@ -35,6 +39,7 @@ export const NAV: NavItem[] = [
     path: '/goals',
     icon: 'target',
     sections: ['goals', 'accounts'],
+    module: 'goals',
   },
   {
     label: 'Savings',
@@ -42,6 +47,7 @@ export const NAV: NavItem[] = [
     path: '/savings',
     icon: 'vault',
     sections: ['savings'],
+    module: 'savings',
   },
   {
     label: 'Credits',
@@ -49,6 +55,7 @@ export const NAV: NavItem[] = [
     path: '/credits',
     icon: 'landmark',
     sections: ['credits'],
+    module: 'credits',
   },
   {
     label: 'Investments',
@@ -56,6 +63,7 @@ export const NAV: NavItem[] = [
     path: '/investments',
     icon: 'trending-up',
     sections: ['investments'],
+    module: 'investments',
   },
 ];
 

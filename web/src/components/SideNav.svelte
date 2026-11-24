@@ -1,6 +1,8 @@
 <script lang="ts">
   import { iconComponent } from '../lib/icons';
   import { t } from '../lib/i18n/index.svelte';
+  import { visibleNav } from '../lib/modules';
+  import { serverModules } from '../lib/modules.svelte';
   import { NAV, isCurrent, navLabel } from '../lib/nav';
   import { href } from '../lib/router.svelte';
 
@@ -40,7 +42,7 @@
   </div>
   <nav aria-label={t('shell.nav.main')}>
     <ul>
-      {#each NAV as item (item.path)}
+      {#each visibleNav(NAV, serverModules.enabled) as item (item.path)}
         {@const Icon = iconComponent(item.icon)}
         <li>
           <a
