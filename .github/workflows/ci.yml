@@ -12,21 +12,10 @@ on:
       - '.golangci.yml'
       - 'config.yaml'
       - 'internal/database/migrations/**'
-      - 'seed/**'
+      - 'demo/**'
       - 'docs/architecture/openapi.yaml'
       - '.github/workflows/ci.yml'
   pull_request:
-    paths:
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - 'Makefile'
-      - '.golangci.yml'
-      - 'config.yaml'
-      - 'internal/database/migrations/**'
-      - 'seed/**'
-      - 'docs/architecture/openapi.yaml'
-      - '.github/workflows/ci.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

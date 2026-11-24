@@ -27,8 +27,9 @@ app in `web/` ([ADR 009](docs/decisions/009-frontend-svelte-spa.md)).
   files. Never edit a shipped migration: add a new one that
   moves the existing values ([ADR 003](docs/decisions/003-fix-forward-migrations.md)).
   Money is integer cents everywhere.
-- **Commits**: conventional format, atomic, each compiles on its own, work on
-  `main`. Update `docs/` when behavior changes and `CHANGELOG.md` only for
+- **Commits**: conventional format, atomic, each compiles on its own. Work on a
+  branch and open a pull request into `main` (squash merge, see
+  [docs/development/workflow.md](docs/development/workflow.md#pull-requests)). Update `docs/` when behavior changes and `CHANGELOG.md` only for
   user-facing changes (see [docs/development/changelog-guidelines.md](docs/development/changelog-guidelines.md)).
 
 ## Frontend
