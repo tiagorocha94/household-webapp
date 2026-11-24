@@ -130,22 +130,6 @@ func NewRegistry(appliers ...Applier) *Registry {
 	return &Registry{appliers: appliers}
 }
 
-func (r *Registry) list() []Applier {
-	if r == nil {
-		return nil
-	}
-	return r.appliers
-}
-
-func (r *Registry) find(module string) Applier {
-	for _, a := range r.list() {
-		if a.Module() == module {
-			return a
-		}
-	}
-	return nil
-}
-
 // Check says why the detail cannot be written, or "" when it can. It reads
 // only and changes nothing. A category that does not exist passes: the
 // movement's own write refuses it.
@@ -211,6 +195,22 @@ func (r *Registry) Remove(tx *sql.Tx, syncID string) error {
 	for _, a := range r.list() {
 		if err := a.Remove(tx, syncID); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func (r *Registry) list() []Applier {
+	if r == nil {
+		return nil
+	}
+	return r.appliers
+}
+
+func (r *Registry) find(module string) Applier {
+	for _, a := range r.list() {
+		if a.Module() == module {
+			return a
 		}
 	}
 	return nil

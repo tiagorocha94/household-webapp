@@ -16,6 +16,13 @@ import (
 // Applier is the credits module's part of the detail of a movement.
 type Applier struct{}
 
+// creditPayment is a stored payment of a movement.
+type creditPayment struct {
+	id, creditID        int64
+	month, kind         string
+	principal, interest money.Cents
+}
+
 // Module returns the module's name.
 func (Applier) Module() string { return modules.Credits }
 
@@ -40,13 +47,6 @@ func (Applier) Follow(tx *sql.Tx, in details.Input) error { return followCredit(
 
 // Remove deletes what is stored for the movement.
 func (Applier) Remove(tx *sql.Tx, syncID string) error { return removeCredit(tx, syncID) }
-
-// creditPayment is a stored payment of a movement.
-type creditPayment struct {
-	id, creditID        int64
-	month, kind         string
-	principal, interest money.Cents
-}
 
 func paymentType(c details.Credit) string {
 	if c.Extraordinary {

@@ -6,16 +6,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/details"
 	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/money"
-	"sort"
 )
 
 // Applier is the investments module's part of the detail of a movement.
 type Applier struct{}
+
+type contribution struct {
+	instrumentID int64
+	month        string
+	cents        money.Cents
+}
 
 // Module returns the module's name.
 func (Applier) Module() string { return modules.Investments }
@@ -43,12 +49,6 @@ func (Applier) Follow(tx *sql.Tx, in details.Input) error { return followInvestm
 
 // Remove deletes what is stored for the movement.
 func (Applier) Remove(tx *sql.Tx, syncID string) error { return removeInvestments(tx, syncID) }
-
-type contribution struct {
-	instrumentID int64
-	month        string
-	cents        money.Cents
-}
 
 func checkInvestments(tx *sql.Tx, in details.Input, inv details.Investments) (string, error) {
 	var owner sql.NullInt64
