@@ -18,15 +18,15 @@ const (
 	Investments = "investments"
 )
 
-// All returns every module, in the order they are listed everywhere.
-func All() []string {
-	return []string{Cashflow, Goals, Savings, Credits, Investments}
-}
-
 // Set is the modules a server runs. The zero value runs all of them, so code
 // that never chooses gets everything.
 type Set struct {
 	names []string
+}
+
+// All returns every module, in the order they are listed everywhere.
+func All() []string {
+	return []string{Cashflow, Goals, Savings, Credits, Investments}
 }
 
 // NewSet returns the set of the given modules; none given means all. An
