@@ -1,0 +1,5 @@
+account,month,type,amount_cents,description,movement
+Emergency fund,2026-08,deposit,150000,,
+Emergency fund,2026-10,deposit,100000,,
+Holiday pot,2026-09,deposit,30000,,
+Holiday pot,2026-10,withdrawal,5000,Booking fee,

@@ -1,0 +1,13 @@
+credit,month,type,principal_cents,interest_cents,description,movement
+Car loan,2025-12,regular,45000,2500,Monthly installment,
+Car loan,2026-01,regular,45060,2460,Monthly installment,
+Car loan,2026-02,regular,45120,2420,Monthly installment,
+Car loan,2026-03,regular,45180,2380,Monthly installment,
+Car loan,2026-04,regular,45240,2340,Monthly installment,
+Car loan,2026-05,regular,45300,2300,Monthly installment,
+Car loan,2026-06,regular,45360,2260,Monthly installment,
+Car loan,2026-07,regular,45420,2220,Monthly installment,
+Car loan,2026-08,regular,45480,2180,Monthly installment,
+Car loan,2026-09,regular,45540,2140,Monthly installment,
+Car loan,2026-10,regular,45600,2100,Monthly installment,
+Car loan,2026-11,regular,45660,2060,Monthly installment,

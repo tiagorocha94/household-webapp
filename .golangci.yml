@@ -1,0 +1,57 @@
+# golangci-lint v2 configuration. `make lint-code` runs it directly, and
+# `make lint` includes it; the version is pinned in the Makefile.
+version: "2"
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - decorder # declaration order: const, var, type, func
+    - errorlint
+    - forbidigo
+    - funcorder # constructors first, then exported before unexported methods
+    - revive
+  settings:
+    decorder:
+      dec-order:
+        - const
+        - var
+        - type
+        - func
+      disable-dec-order-check: false
+      disable-init-func-first-check: true
+      disable-dec-num-check: true
+    forbidigo:
+      forbid:
+        # Loggers are injected (docs/decisions/007); the log package is not used.
+        - pattern: ^slog\.(Debug|Info|Warn|Error)$
+          msg: inject a *slog.Logger instead of using the default logger
+        - pattern: ^log\.(Print|Printf|Println|Fatal|Fatalf|Fatalln|Panic|Panicf|Panicln)$
+          msg: use log/slog instead of the log package
+    errcheck:
+      exclude-functions:
+        # Rows.Close errors surface through rows.Err(), and Rollback after a
+        # commit or a failed statement has nothing left to report.
+        - (*database/sql.Rows).Close
+        - (*database/sql.Tx).Rollback
+    revive:
+      rules:
+        - name: exported
+  exclusions:
+    rules:
+      # Only the entry point creates and uses the default logger.
+      - path: ^cmd/server/
+        linters:
+          - forbidigo
+      - path: _test\.go
+        linters:
+          - errcheck
+          - forbidigo
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/tiagorocha94/household-webapp

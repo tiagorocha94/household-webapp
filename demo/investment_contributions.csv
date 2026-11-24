@@ -1,0 +1,13 @@
+entity,instrument,month,amount_cents,description,movement
+Demo Broker,World ETF,2026-06,10000,,
+Demo Bank,Retirement fund,2026-06,5000,,
+Demo Broker,World ETF,2026-07,10000,,
+Demo Bank,Retirement fund,2026-07,5000,,
+Demo Broker,World ETF,2026-08,10000,,
+Demo Bank,Retirement fund,2026-08,5000,,
+Demo Broker,World ETF,2026-09,10000,,
+Demo Bank,Retirement fund,2026-09,5000,,
+Demo Broker,World ETF,2026-10,10000,,
+Demo Bank,Retirement fund,2026-10,5000,,
+Demo Broker,World ETF,2026-11,10000,,
+Demo Bank,Retirement fund,2026-11,5000,,

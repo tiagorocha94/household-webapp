@@ -1,0 +1,243 @@
+/* Design tokens. The look is a printed ledger: cool paper, ink, rules between
+   rows instead of boxes, and serif figures. Colour carries meaning only:
+   --in is money coming in, --out is money going out, --accent marks the
+   current place. */
+:root {
+  color-scheme: light dark;
+  --bg: #f3f5f7;
+  --ink: #15202b;
+  --muted: #5d6b78;
+  --rule: #d5dce2;
+  --accent: #0f6b5c;
+  --in: #1d7a55;
+  --out: #a8402f;
+  /* Chart series, checked for colour-blind separation and contrast on --bg. */
+  --series-1: #1d6fa5;
+  --series-2: #b06a00;
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* The dark colours apply when the system is dark and the person did not ask for light, or when
+   the person asked for dark (the settings page; src/lib/appearance.ts). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #101820;
+    --ink: #e6ebef;
+    --muted: #93a1ad;
+    --rule: #2a3641;
+    --accent: #4cc1ab;
+    --in: #4cc194;
+    --out: #e0806e;
+    --series-1: #3f9fc8;
+    --series-2: #bf8530;
+  }
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #101820;
+  --ink: #e6ebef;
+  --muted: #93a1ad;
+  --rule: #2a3641;
+  --accent: #4cc1ab;
+  --in: #4cc194;
+  --out: #e0806e;
+  --series-1: #3f9fc8;
+  --series-2: #bf8530;
+}
+
+/* Accents: the same four as the phone app, each with a light and a dark value. */
+:root[data-accent='blue'] {
+  --accent: #1f5fae;
+}
+:root[data-accent='purple'] {
+  --accent: #6a4bb5;
+}
+:root[data-accent='pink'] {
+  --accent: #a8307f;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-accent='blue']:not([data-theme='light']) {
+    --accent: #6cb0f2;
+  }
+  :root[data-accent='purple']:not([data-theme='light']) {
+    --accent: #b79cf0;
+  }
+  :root[data-accent='pink']:not([data-theme='light']) {
+    --accent: #ee8fc8;
+  }
+}
+:root[data-theme='dark'][data-accent='blue'] {
+  --accent: #6cb0f2;
+}
+:root[data-theme='dark'][data-accent='purple'] {
+  --accent: #b79cf0;
+}
+:root[data-theme='dark'][data-accent='pink'] {
+  --accent: #ee8fc8;
+}
+
+/* Text size scales everything, because sizes are in rem. */
+:root[data-text-size='large'] {
+  font-size: 112.5%;
+}
+:root[data-text-size='larger'] {
+  font-size: 125%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 1rem/1.55 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 0.6rem;
+}
+h1 {
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.35rem;
+}
+
+a {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  padding: 0.35rem 0.8rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+input {
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--ink);
+}
+
+.state {
+  padding: 2rem 0;
+  color: var(--muted);
+}
+.state.error {
+  color: var(--out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Ledger tables: rules between rows, figures right-aligned. */
+table.ledger {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.ledger th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 0.4rem 0.75rem 0.4rem 0;
+  border-bottom: 1px solid var(--ink);
+  white-space: nowrap;
+}
+table.ledger td {
+  padding: 0.55rem 0.75rem 0.55rem 0;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: baseline;
+}
+/* Compact rows: the settings page's choice. */
+:root[data-rows='compact'] table.ledger td {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+table.ledger .num + :not(.num) {
+  padding-left: 1.2rem;
+}
+table.ledger .num {
+  text-align: right;
+  white-space: nowrap;
+  padding-right: 0;
+  padding-left: 0.75rem;
+}
+table.ledger th.num {
+  text-align: right;
+}
+.in {
+  color: var(--in);
+}
+.out {
+  color: var(--out);
+}
+
+.section {
+  margin-top: 2.5rem;
+}
+.section > h2 {
+  margin-bottom: 0.8rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+.filters button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}

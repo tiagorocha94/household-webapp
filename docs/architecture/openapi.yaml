@@ -1,0 +1,945 @@
+openapi: 3.0.3
+info:
+  title: household API
+  version: 0.1.0
+  description: >
+    JSON API that is read-only for browsers. Authenticated with a session
+    cookie obtained from POST /auth/login, so it is intended for same-origin
+    clients. Data changes go through the CSV files, not the browser API; enrolled
+    phones write cashflow movements with a device token (see POST
+    /devices/enrol) and may also read the goals, credits, investments and savings endpoints with it. Every logged-in user can read all
+    data. Amounts are integers in cents 
+    (hundredths of a euro), and every money property ends in "Cents". 
+    Months are YYYY-MM strings. Errors are JSON objects of the form 
+    {"error": "message"}: unmatched paths return a JSON 404 and a wrong method on a known path a JSON 405 with an Allow header.
+    List endpoints return [] when there is nothing to list.
+servers:
+  - url: /api/v1
+security:
+  - sessionCookie: []
+paths:
+  /healthz:
+    get:
+      summary: Check that the server is running
+      description: Needs no session. Answers 200 while the process is serving requests.
+      security: []
+      responses:
+        "200":
+          description: Running
+          content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [ok] } }, required: [status] } } }
+  /info:
+    get:
+      summary: Report the running version
+      description: >
+        Needs no session. The version is the release tag, or the tag followed by
+        the number of commits since it and the commit hash (v0.3.0-4-g1a2b3c4),
+        with -dirty for uncommitted changes. A binary built without a version
+        reports dev-<commit>.
+      security: []
+      responses:
+        "200":
+          description: Version
+          content: { application/json: { schema: { type: object, properties: { version: { type: string }, syncApi: { type: integer, description: The version of the sync protocol (POST /sync/cashflow). It goes up when a change would break an app built for the old one. } }, required: [version, syncApi] } } }
+  /auth/login:
+    post:
+      summary: Log in and start a session
+      description: Sets the session_token cookie. The username is trimmed and case-insensitive.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } }
+      responses:
+        "200":
+          description: Logged in. The session_token cookie is set.
+          content: { application/json: { schema: { $ref: "#/components/schemas/User" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429":
+          description: Too many failed logins from this address or for this username. Wait for the number of seconds in Retry-After.
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until logins are accepted again }
+          content: { application/json: { schema: { type: object, properties: { error: { type: string } }, required: [error] } } }
+  /auth/logout:
+    post:
+      summary: End the session
+      description: Idempotent. Works without a session and expires the cookie. A request that the browser marks as cross-site is refused.
+      security: []
+      responses:
+        "204": { description: "Logged out, no body" }
+  /devices/enrol:
+    post:
+      summary: Exchange an enrolment code for a device token
+      description: >
+        For a phone that writes data. The code comes from `household-app device
+        add`, works once and expires after 15 minutes. The token is shown only
+        in this answer, has no expiry, and stops working when the device is
+        revoked. It is sent as `Authorization: Bearer <token>` to the device
+        endpoints. Codes are not case-sensitive, and dashes and spaces are
+        ignored.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EnrolRequest" } } }
+      responses:
+        "200":
+          description: Enrolled
+          content: { application/json: { schema: { $ref: "#/components/schemas/EnrolResponse" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429":
+          description: Too many failed attempts from this address. Wait for the number of seconds in Retry-After.
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until attempts are accepted again }
+          content: { application/json: { schema: { type: object, properties: { error: { type: string } }, required: [error] } } }
+  /sync/cashflow:
+    post:
+      summary: Apply movement changes from an enrolled device
+      description: >
+        The only endpoint that changes data. It needs a device token
+        (`Authorization: Bearer <token>`, see `POST /devices/enrol`), not the
+        session cookie, and writes only for the person the device is enrolled
+        for; the body never names the person. A batch holds up to 200
+        operations, applied in order, and the answer has one result per
+        operation in the same order. An `upsert` adds the movement or changes
+        the one with the same `syncId`; a `delete` removes it, and deleting one
+        that does not exist is fine. Both are idempotent, so a batch can be
+        sent again after a failure. An operation that is refused (bad value,
+        unknown category, a `syncId` that belongs to another person) is reported
+        as `rejected` with a reason and does not stop the others. If the
+        database fails, nothing is kept and the answer is 500. After a change the
+        server rewrites `cashflow_movements.csv`. Fields of an operation that
+        the operation does not use are ignored.
+      security: [ { deviceToken: [] } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SyncRequest" } } }
+      responses:
+        "200":
+          description: One result per operation
+          content: { application/json: { schema: { $ref: "#/components/schemas/SyncResponse" } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429":
+          description: Too many failed device attempts from this address. Wait for the number of seconds in Retry-After.
+          headers:
+            Retry-After: { schema: { type: integer }, description: Seconds until attempts are accepted again }
+          content: { application/json: { schema: { type: object, properties: { error: { type: string } }, required: [error] } } }
+  /auth/me:
+    get:
+      summary: The authenticated user
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/User" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /goals/accounts:
+    get:
+      summary: List goal accounts the user owns or belongs to
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Account" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /goals/accounts/{id}:
+    get:
+      summary: Account with balance summary
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AccountDetail" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /goals/accounts/{id}/goals:
+    get:
+      summary: Goals of an account with computed totals
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Goal" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /goals/accounts/{id}/movements:
+    get:
+      summary: Account ledger, newest month first
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Movement" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /goals/accounts/{id}/projection:
+    get:
+      summary: Full projection window (12 months back to the last active goal end)
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Projection" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /goals/{id}:
+    get:
+      summary: Goal with its movements
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GoalDetail" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /overview:
+    get:
+      summary: The figures of the Home page, composed from every module
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Overview" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /overview/net-worth:
+    get:
+      summary: Net worth month by month, for every month that has cashflow, oldest first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/NetWorthMonth" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /credits:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: All credit contracts
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Contract" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /credits/due:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Credits whose regular payment of this month is expected and not recorded
+      description: >
+        Credits that are not paid off, have started, have an expected day and no
+        regular payment in the current month. The instalment is the amount of the
+        last regular payment, and zero when there is none.
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DueCredit" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /credits/{id}:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Contract summary
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Contract" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /credits/{id}/payments:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Payment history, newest first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Payment" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /savings/accounts:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Savings accounts with their figures, ordered by name
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SavingsAccount" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /savings/accounts/{id}:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Savings account with its figures
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SavingsAccount" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /savings/accounts/{id}/movements:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Deposits and withdrawals of a savings account, newest month first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SavingsMovement" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /savings/accounts/{id}/snapshots:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Balance snapshots of a savings account, newest month first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SavingsSnapshot" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /investments/entities:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: All investment entities with their totals, largest allocation first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/InvestmentEntity" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /investments/entities/{id}:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Investment entity with its totals
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvestmentEntity" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /investments/entities/{id}/instruments:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Instruments of an entity, most valuable first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/InvestmentInstrument" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /investments/instruments/{id}:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Investment instrument with its totals
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvestmentInstrument" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /investments/instruments/{id}/contributions:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Contribution history, newest first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/InvestmentContribution" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /investments/instruments/{id}/snapshots:
+    get:
+      security: [ { sessionCookie: [] }, { deviceToken: [] } ]
+      summary: Value snapshot history, newest first
+      parameters: [ { $ref: "#/components/parameters/Id" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/InvestmentSnapshot" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /cashflow/categories:
+    get:
+      summary: The fixed set of cashflow categories, by name
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CashflowCategory" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /cashflow/budget/{month}:
+    get:
+      summary: One month's budget by group, for phones
+      description: >
+        Readable with a session or a device token (ADR 015). It carries totals
+        only: no people and no movements. A month without movements is not
+        404: it has no income and no spending, with the groups listed.
+      parameters: [ { $ref: "#/components/parameters/Month" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CashflowBudget" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /cashflow/balance/{month}:
+    get:
+      summary: The caller's own cash at the end of a month, for phones
+      description: >
+        Readable with a session or a device token (ADR 019). It is the cash of
+        the person who is signed in or who owns the device, never anyone
+        else's ([ADR 018](../decisions/018-cash-balance-from-typed-balances.md)).
+        `balanceCents` is null only when the person has neither a typed balance nor a movement.
+      parameters: [ { $ref: "#/components/parameters/Month" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CashflowOwnBalance" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+  /cashflow/months:
+    get:
+      summary: One summary per month that has movements, newest first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CashflowMonth" } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+  /cashflow/months/{month}:
+    get:
+      summary: One month with its totals by category and by person
+      description: >
+        404 when the month has no movements, unlike the movements list below,
+        which returns [] for the same month.
+      parameters: [ { $ref: "#/components/parameters/Month" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CashflowMonthDetail" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /cashflow/months/{month}/movements:
+    get:
+      summary: Every movement of a month, newest date first
+      description: >
+        400 when the month is malformed. A month without movements returns [],
+        not 404.
+      parameters: [ { $ref: "#/components/parameters/Month" } ]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CashflowMovement" } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    sessionCookie: { type: apiKey, in: cookie, name: session_token }
+    deviceToken: { type: http, scheme: bearer, description: Issued by POST /devices/enrol }
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    Month: { name: month, in: path, required: true, schema: { type: string, pattern: '^\d{4}-\d{2}$' }, description: Calendar month as YYYY-MM }
+  responses:
+    Error:
+      description: Error (400, 401 or 404)
+      content: { application/json: { schema: { type: object, properties: { error: { type: string } }, required: [error] } } }
+  schemas:
+    EnrolRequest:
+      type: object
+      required: [code]
+      properties: { code: { type: string, example: K7QD2-M9XWP } }
+    EnrolResponse:
+      type: object
+      required: [token, username, deviceName]
+      properties:
+        token: { type: string, description: Shown once. Keep it secret. }
+        username: { type: string, description: The person the device writes for }
+        deviceName: { type: string }
+    SyncRequest:
+      type: object
+      required: [operations]
+      properties:
+        operations:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/SyncOperation" }
+    SyncOperation:
+      type: object
+      required: [op, syncId]
+      properties:
+        op: { type: string, enum: [upsert, delete] }
+        syncId: { type: string, description: "Lowercase UUID made by the device when it records the movement", example: "3f2b8c1e-5d4a-4e7b-9a10-6c2d8e4f1a07" }
+        category: { type: string, description: "A category name from GET /cashflow/categories. Needed for upsert." }
+        date: { type: string, format: date, description: "The day as YYYY-MM-DD. Needed for upsert." }
+        amountCents: { type: integer, minimum: 1, description: "Always positive; the category decides the direction. Needed for upsert." }
+        description: { type: string, description: "Optional note, trimmed. For upsert." }
+        detail: { $ref: "#/components/schemas/SyncDetail" }
+    SyncDetail:
+      type: object
+      description: >
+        Where the money of the movement went (ADR 021). For upsert only. Leaving
+        it out keeps the detail the movement has; an empty object removes it.
+        The movement and its detail are written together or not at all.
+      properties:
+        savings: { $ref: "#/components/schemas/SyncSavingsDetail" }
+        investments: { $ref: "#/components/schemas/SyncInvestmentsDetail" }
+        credit: { $ref: "#/components/schemas/SyncCreditDetail" }
+    SyncInvestmentsDetail:
+      type: object
+      required: [entityId, lines]
+      description: >
+        Money put into the instruments of one investment account, for a category
+        with the investments role. The account must be the person's own or have
+        no owner, and every instrument must belong to it. The lines may add up to
+        less than the movement while the split is open, never to more. Sending
+        the detail replaces the lines the movement had; no lines keeps none.
+      properties:
+        entityId: { type: integer }
+        lines:
+          type: array
+          items:
+            type: object
+            required: [instrumentId, amountCents]
+            properties:
+              instrumentId: { type: integer }
+              amountCents: { type: integer, minimum: 1 }
+              valueCents: { type: integer, minimum: 0, description: "The instrument's value seen now. Left out records nothing." }
+    SyncCreditDetail:
+      type: object
+      required: [creditId, principalCents, interestCents]
+      description: >
+        A payment on a credit, for a category with the credits role. Credits have
+        no owner. The principal and the interest must add up to the movement's
+        amount. A regular payment is one per credit and month; an extraordinary
+        one can be added to it.
+      properties:
+        creditId: { type: integer }
+        principalCents: { type: integer, minimum: 0 }
+        interestCents: { type: integer, minimum: 0 }
+        extraordinary: { type: boolean, default: false }
+    SyncSavingsDetail:
+      type: object
+      required: [accountId]
+      description: >
+        A deposit into a savings account, for a category with the savings role.
+        The account must be the person's own or have no owner. The deposit takes
+        the movement's amount and its month.
+      properties:
+        accountId: { type: integer }
+        valueCents: { type: integer, minimum: 0, description: "The account's value seen now. Left out records nothing." }
+    SyncResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/SyncResult" }
+    SyncResult:
+      type: object
+      required: [syncId, status]
+      properties:
+        syncId: { type: string }
+        status: { type: string, enum: [ok, rejected], description: "ok also covers an operation that had nothing to change" }
+        reason: { type: string, description: Why the operation was refused. Only for rejected. }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties: { username: { type: string }, password: { type: string } }
+    User:
+      type: object
+      required: [id, username]
+      properties: { id: { type: integer }, username: { type: string } }
+    Account:
+      type: object
+      required: [id, name, monthlyDepositCents]
+      properties: { id: { type: integer }, name: { type: string }, monthlyDepositCents: { type: integer, description: Deposit the projection assumes for each future month } }
+    Balance:
+      type: object
+      required: [depositsCents, allocatedCents, expensesCents, releasedCents, coveredCents, balanceCents, unallocatedCents]
+      properties: { depositsCents: { type: integer }, allocatedCents: { type: integer }, expensesCents: { type: integer }, releasedCents: { type: integer, description: Leftover that closed goals returned to the unallocated money }, coveredCents: { type: integer, description: Overspend of closed goals that the unallocated money covered }, balanceCents: { type: integer }, unallocatedCents: { type: integer } }
+    AccountDetail:
+      type: object
+      required: [account, balance]
+      properties: { account: { $ref: "#/components/schemas/Account" }, balance: { $ref: "#/components/schemas/Balance" } }
+    Goal:
+      type: object
+      required: [id, accountId, name, targetCents, startMonth, endMonth, status, totalMonths, elapsedMonths, monthlyAllocationCents, allocatedCents, expensesCents, balanceCents, closingBalanceCents, progressPct]
+      properties:
+        id: { type: integer }
+        accountId: { type: integer }
+        name: { type: string }
+        targetCents: { type: integer }
+        startMonth: { type: string }
+        endMonth: { type: string }
+        status: { type: string, enum: [active, completed, cancelled] }
+        totalMonths: { type: integer }
+        elapsedMonths: { type: integer, description: "Months of the schedule that have begun, counting the current local month" }
+        monthlyAllocationCents: { type: integer, description: Largest monthly amount (ceil of target / months) }
+        allocatedCents: { type: integer }
+        expensesCents: { type: integer }
+        balanceCents: { type: integer, description: "Allocated less spent, settled by the closing movement. Negative while a goal has spent more than it holds" }
+        closingBalanceCents: { type: integer, nullable: true, description: "The balance the goal had when it was completed: the leftover when positive, the overspend when negative. Null while the goal is not completed" }
+        progressPct: { type: integer }
+    Movement:
+      type: object
+      required: [id, accountId, goalId, goalName, type, amountCents, month, description, createdAt, accountInflow, goalInflow]
+      properties:
+        id: { type: integer }
+        accountId: { type: integer }
+        goalId: { type: integer, nullable: true }
+        goalName: { type: string }
+        type: { type: string, enum: [deposit, allocation, expense, release, cover] }
+        amountCents: { type: integer, description: Always positive; use type or the inflow flags for direction }
+        month: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+        accountInflow: { type: boolean, description: True when the movement adds money to the account (deposit or release) }
+        goalInflow: { type: boolean, description: True for allocations and covers into a goal; deposits are account-scoped }
+    GoalDetail:
+      type: object
+      required: [goal, movements]
+      properties: { goal: { $ref: "#/components/schemas/Goal" }, movements: { type: array, items: { $ref: "#/components/schemas/Movement" } } }
+    Projection:
+      type: object
+      required: [monthlyDepositCents, months]
+      properties:
+        monthlyDepositCents: { type: integer }
+        months:
+          type: array
+          items:
+            type: object
+            required: [month, depositsCents, allocationsCents, expensesCents, releasedCents, coveredCents, balanceCents, unallocatedCents, isProjection]
+            properties: { month: { type: string }, depositsCents: { type: integer }, allocationsCents: { type: integer }, expensesCents: { type: integer }, releasedCents: { type: integer }, coveredCents: { type: integer }, balanceCents: { type: integer }, unallocatedCents: { type: integer }, isProjection: { type: boolean } }
+    Contract:
+      type: object
+      required: [id, name, category, contractNumber, lender, originalPrincipalCents, startMonth, expectedEndMonth, status, notes, paymentCount, principalPaidCents, interestPaidCents, totalPaidCents, outstandingPrincipalCents, progressPct, lastPaymentMonth, expectedDay]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        category: { type: string, enum: [mortgage, car, personal, other] }
+        contractNumber: { type: string }
+        lender: { type: string }
+        originalPrincipalCents: { type: integer }
+        startMonth: { type: string }
+        expectedEndMonth: { type: string, nullable: true }
+        status: { type: string, enum: [active, paid_off] }
+        notes: { type: string }
+        paymentCount: { type: integer }
+        principalPaidCents: { type: integer }
+        interestPaidCents: { type: integer }
+        totalPaidCents: { type: integer }
+        outstandingPrincipalCents: { type: integer }
+        progressPct: { type: integer }
+        lastPaymentMonth: { type: string, nullable: true }
+        expectedDay: { type: integer, nullable: true, description: "The day of the month by which the payment should be recorded" }
+    DueCredit:
+      type: object
+      required: [id, name, month, expectedDay, principalCents, interestCents, totalCents]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        month: { type: string }
+        expectedDay: { type: integer }
+        principalCents: { type: integer }
+        interestCents: { type: integer }
+        totalCents: { type: integer }
+    Payment:
+      type: object
+      required: [id, month, type, principalCents, interestCents, totalCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        month: { type: string }
+        type: { type: string, enum: [regular, extraordinary] }
+        principalCents: { type: integer }
+        interestCents: { type: integer }
+        totalCents: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    InvestmentEntity:
+      type: object
+      required: [id, name, kind, user, instrumentCount, allocatedCents, currentValueCents, gainCents, gainPct]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [bank, broker, investment_firm, state, other] }
+        user: { type: string, nullable: true, description: "Username of the person the account belongs to; null when it belongs to the household." }
+        instrumentCount: { type: integer }
+        allocatedCents: { type: integer }
+        currentValueCents: { type: integer }
+        gainCents: { type: integer }
+        gainPct: { type: integer, description: "Gain as a percentage scaled by 100 (734 means +7.34%). May be negative; 0 when nothing is allocated." }
+    SavingsAccount:
+      type: object
+      required: [id, name, owner, targetCents, notes, balanceCents, depositedCents, withdrawnCents, interestCents, progressPct, movementCount, snapshotCount, lastSnapshotMonth]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        owner: { type: string, nullable: true, description: "Username of the owner; null when the account belongs to the household." }
+        targetCents: { type: integer, nullable: true, description: "The amount to reach; null when the account has no target." }
+        notes: { type: string }
+        balanceCents: { type: integer, description: "The latest snapshot, or the deposits less the withdrawals while there is none." }
+        depositedCents: { type: integer }
+        withdrawnCents: { type: integer }
+        interestCents: { type: integer, description: "The balance less deposits plus withdrawals; 0 without a snapshot." }
+        progressPct: { type: integer, description: "The balance as a whole percent of the target; 0 without a target, can be above 100." }
+        movementCount: { type: integer }
+        snapshotCount: { type: integer }
+        lastSnapshotMonth: { type: string, nullable: true }
+    SavingsMovement:
+      type: object
+      required: [id, month, type, amountCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        month: { type: string }
+        type: { type: string, enum: [deposit, withdrawal] }
+        amountCents: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    SavingsSnapshot:
+      type: object
+      required: [id, month, valueCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        month: { type: string }
+        valueCents: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    InvestmentInstrument:
+      type: object
+      required: [id, entityId, entityName, name, type, notes, user, contributionCount, snapshotCount, allocatedCents, currentValueCents, gainCents, gainPct, lastSnapshotMonth]
+      properties:
+        id: { type: integer }
+        entityId: { type: integer }
+        entityName: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [etf, fund, ppr, certificados_aforro, other] }
+        notes: { type: string }
+        user: { type: string, nullable: true, description: "Username of the person its account belongs to; null when that belongs to the household." }
+        contributionCount: { type: integer }
+        snapshotCount: { type: integer }
+        allocatedCents: { type: integer }
+        currentValueCents: { type: integer }
+        gainCents: { type: integer }
+        gainPct: { type: integer, description: "Gain as a percentage scaled by 100 (734 means +7.34%). May be negative; 0 when nothing is allocated." }
+        lastSnapshotMonth: { type: string, nullable: true }
+    InvestmentContribution:
+      type: object
+      required: [id, month, amountCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        month: { type: string }
+        amountCents: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    InvestmentSnapshot:
+      type: object
+      required: [id, month, valueCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        month: { type: string }
+        valueCents: { type: integer }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+    Overview:
+      type: object
+      required: [month, attention, goals, credit, investments, savings, netWorth, cashflow, activeGoals, contracts, holdings]
+      properties:
+        month: { type: string, description: The current month as YYYY-MM. }
+        attention: { type: array, items: { $ref: "#/components/schemas/OverviewAttention" }, description: "Things that need looking at: goals funding shortfalls first, then budget groups over their budget. Empty when there are none." }
+        goals: { $ref: "#/components/schemas/OverviewGoals" }
+        credit: { $ref: "#/components/schemas/OverviewCredit" }
+        investments: { $ref: "#/components/schemas/OverviewInvestments" }
+        savings: { $ref: "#/components/schemas/OverviewSavings" }
+        netWorth: { $ref: "#/components/schemas/OverviewNetWorth" }
+        cashflow: { $ref: "#/components/schemas/OverviewCashflow" }
+        activeGoals: { type: array, items: { $ref: "#/components/schemas/OverviewGoal" }, description: "Every active goal, the soonest end first." }
+        contracts: { type: array, items: { $ref: "#/components/schemas/OverviewContract" }, description: Every active credit contract. }
+        holdings: { type: array, items: { $ref: "#/components/schemas/OverviewHolding" }, description: The current value at each investment entity. }
+    OverviewAttention:
+      type: object
+      required: [kind, name, month, amountCents, pct]
+      properties:
+        kind: { type: string, enum: [goals_shortfall, budget_over, unassigned_savings, unassigned_investments, unassigned_goals, unassigned_credits, credit_unpaid] }
+        name: { type: string, description: "The goal account, the budget group or the credit. Empty for the unassigned_ kinds." }
+        month: { type: string, description: "For goals_shortfall, the first future month whose planned allocations exceed the money available (YYYY-MM). Empty for budget_over. For unassigned_savings and unassigned_investments, the month whose cashflow expenses in savings or investment categories are more than the deposits or contributions typed. For credit_unpaid, the current month (YYYY-MM)." }
+        amountCents: { type: integer, description: "The shortfall, how much the group is over its budget, or the money put aside in cashflow that no deposit or contribution accounts for." }
+        pct: { type: integer, description: "For budget_over, the share of the budget spent as a whole percent (above 100). 0 for goals_shortfall." }
+    OverviewGoals:
+      type: object
+      required: [savedCents, targetCents]
+      properties:
+        savedCents: { type: integer, description: Saved in the active goals. }
+        targetCents: { type: integer, description: Total target of the active goals. }
+    OverviewCredit:
+      type: object
+      required: [outstandingCents, monthlyInstalmentCents, activeContracts]
+      properties:
+        outstandingCents: { type: integer, description: Outstanding principal of the active contracts. }
+        monthlyInstalmentCents: { type: integer, description: Sum of the last regular payment of each active contract. }
+        activeContracts: { type: integer }
+    OverviewInvestments:
+      type: object
+      required: [currentValueCents]
+      properties:
+        currentValueCents: { type: integer }
+    NetWorthMonth:
+      type: object
+      required: [month, savingsCents, investmentsCents, goalsCents, cashCents, assetsCents, creditCents, netCents]
+      properties:
+        month: { type: string, description: YYYY-MM. }
+        savingsCents: { type: integer, description: "The savings balance at the end of the month: each account's latest snapshot up to then, or its deposits less withdrawals without one." }
+        investmentsCents: { type: integer, description: "The latest snapshot up to the month of every instrument." }
+        goalsCents: { type: integer, description: Money saved in the active goals up to the month. }
+        cashCents: { type: integer, description: "The cash of everyone who has a typed bank balance or a movement." }
+        assetsCents: { type: integer, description: "The four above added up." }
+        creditCents: { type: integer, description: "Principal still owed on the contracts that had started, after the payments up to the month." }
+        netCents: { type: integer, description: "assetsCents minus creditCents. Can be negative." }
+    OverviewNetWorth:
+      type: object
+      required: [assetsCents, cashCents, cashByUser, creditCents, netCents]
+      properties:
+        assetsCents: { type: integer, description: "The savings balance, the investments' current value, the money saved in the active goals and the cash." }
+        cashCents: { type: integer, description: "The part of assetsCents held as cash: each person's typed bank balance carried to this month, or their cashflow counted from zero when none was typed. Can be negative." }
+        cashByUser:
+          type: array
+          description: Each person's cash this month, ordered by username. Empty when nobody has a typed balance or a movement.
+          items:
+            type: object
+            required: [user, balanceCents]
+            properties:
+              user: { type: string }
+              balanceCents: { type: integer }
+        creditCents: { type: integer, description: Outstanding principal of the active credit contracts. }
+        netCents: { type: integer, description: "assetsCents minus creditCents. Can be negative." }
+    OverviewSavings:
+      type: object
+      required: [balanceCents, targetCents, accounts, interestCents, items]
+      properties:
+        balanceCents: { type: integer, description: The balance of every savings account. }
+        targetCents: { type: integer, description: "The targets of the accounts that have one added up; 0 when none has." }
+        accounts: { type: integer }
+        interestCents: { type: integer, description: The interest earned across the accounts. }
+        items: { type: array, items: { $ref: "#/components/schemas/OverviewSavingsAccount" }, description: "Every savings account, ordered by name." }
+    OverviewSavingsAccount:
+      type: object
+      required: [id, name, owner, balanceCents, targetCents, progressPct, interestCents]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        owner: { type: string, nullable: true, description: "Username of the owner; null when the account belongs to the household." }
+        balanceCents: { type: integer }
+        targetCents: { type: integer, nullable: true, description: "The amount to reach; null when the account has no target." }
+        progressPct: { type: integer, description: "The balance as a whole percent of the target; 0 without a target, can be above 100." }
+        interestCents: { type: integer, description: "0 without a snapshot." }
+    OverviewCashflow:
+      type: object
+      required: [month, incomeCents, expenseCents, savedCents, netCents, savingsRatePct, previousExpenseCents, groups]
+      properties:
+        month: { type: string }
+        incomeCents: { type: integer }
+        expenseCents: { type: integer }
+        savedCents: { type: integer, description: "The part of the expenses in savings categories." }
+        netCents: { type: integer, description: Income minus expenses. May be negative. }
+        savingsRatePct: { type: integer, description: "Net divided by income as a percentage scaled by 100 (2500 means 25.00%). May be negative; 0 when there is no income." }
+        previousExpenseCents: { type: integer, description: "Expenses of the previous month up to the same day of the month, for a fair comparison part way through the month." }
+        groups: { type: array, items: { $ref: "#/components/schemas/OverviewGroup" }, description: "Budget groups, in the order of the groups file. Empty when none are configured." }
+    OverviewGroup:
+      type: object
+      required: [name, budgetCents, spentCents, usedPct]
+      properties:
+        name: { type: string }
+        budgetCents: { type: integer }
+        spentCents: { type: integer }
+        usedPct: { type: integer, description: The share of the budget spent as a whole percent. 0 when the budget is 0; above 100 when over. }
+    OverviewGoal:
+      type: object
+      required: [id, name, endMonth, targetCents, savedCents, progressPct, behind]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        endMonth: { type: string }
+        targetCents: { type: integer }
+        savedCents: { type: integer }
+        progressPct: { type: integer }
+        behind: { type: boolean, description: "True when less was allocated than an even split of the target over the goal's months would have by now." }
+    OverviewContract:
+      type: object
+      required: [id, name, outstandingCents, instalmentCents, nextInstalmentMonth, endMonth]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        outstandingCents: { type: integer }
+        instalmentCents: { type: integer, description: The last regular payment; 0 when there is none yet. }
+        nextInstalmentMonth: { type: string, nullable: true, description: "The month after the last regular payment (YYYY-MM). An estimate, because payments are recorded by month. Null when there is no regular payment yet." }
+        endMonth: { type: string, nullable: true, description: The expected end month. }
+    OverviewHolding:
+      type: object
+      required: [id, name, valueCents]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        valueCents: { type: integer }
+    CashflowCategory:
+      type: object
+      required: [id, name, direction, icon, color, role]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        direction: { type: string, enum: [income, expense] }
+        icon: { type: string, description: "Lucide icon name in kebab-case, such as shopping-basket." }
+        color: { type: string, description: "Colour as #RRGGBB." }
+        role: { type: string, enum: ["", savings, investments, goals, credits], description: "Where an expense category's money goes; empty for none. Its movements stay expenses." }
+    CashflowMonth:
+      type: object
+      required: [month, incomeCents, expenseCents, netCents, savingsRatePct, movementCount]
+      properties:
+        month: { type: string }
+        incomeCents: { type: integer }
+        expenseCents: { type: integer }
+        netCents: { type: integer, description: Income minus expenses. May be negative. }
+        savingsRatePct: { type: integer, description: "Net divided by income as a percentage scaled by 100 (2500 means 25.00%). May be negative; 0 when there is no income." }
+        movementCount: { type: integer }
+    CashflowMonthDetail:
+      type: object
+      required: [month, incomeCents, expenseCents, netCents, savingsRatePct, movementCount, byCategory, savedCents, byUser, peopleHistory, byGroup]
+      properties:
+        month: { type: string }
+        incomeCents: { type: integer }
+        expenseCents: { type: integer }
+        netCents: { type: integer, description: Income minus expenses. May be negative. }
+        savingsRatePct: { type: integer, description: "Net divided by income as a percentage scaled by 100 (2500 means 25.00%). May be negative; 0 when there is no income." }
+        movementCount: { type: integer }
+        byCategory: { type: array, items: { $ref: "#/components/schemas/CashflowCategoryTotal" }, description: "Expenses first, then income, the largest first within each." }
+        savedCents: { type: integer, description: "The part of the expenses in savings categories." }
+        byUser: { type: array, items: { $ref: "#/components/schemas/CashflowUserTotal" }, description: By username. }
+        peopleHistory:
+          type: array
+          description: Each person's income and money put aside in the month and the five before it, oldest month first. A person has no row for a month without movements.
+          items: { $ref: "#/components/schemas/CashflowUserMonth" }
+        byGroup: { type: array, items: { $ref: "#/components/schemas/CashflowGroupTotal" }, description: "Budget by group, in the order of the groups file. Empty when no budget groups are configured." }
+    CashflowOwnBalance:
+      type: object
+      required: [month, balanceCents]
+      properties:
+        month: { type: string }
+        balanceCents: { type: integer, nullable: true, description: "What the person had in the bank at the end of the month; negative when overdrawn. Null only when they have neither a typed balance nor a movement." }
+    CashflowBudget:
+      type: object
+      required: [month, incomeCents, expenseCents, netCents, byGroup, months]
+      properties:
+        month: { type: string }
+        incomeCents: { type: integer }
+        expenseCents: { type: integer }
+        netCents: { type: integer, description: Income minus expenses. May be negative. }
+        byGroup: { type: array, items: { $ref: "#/components/schemas/CashflowGroupTotal" }, description: "Budget by group, in the order of the groups file. Empty when no budget groups are configured." }
+        months: { type: array, items: { type: string }, description: "The months that have movements, newest first." }
+    CashflowGroupTotal:
+      type: object
+      required: [name, percent, budgetCents, spentCents, leftCents, categories]
+      properties:
+        name: { type: string }
+        percent: { type: integer, description: "The group's share of the month's income, a whole percent." }
+        budgetCents: { type: integer, description: "The share of the month's income. The budgets of all groups add up to the income exactly; 0 for a month without income." }
+        spentCents: { type: integer, description: Expenses of the group's categories in the month. }
+        leftCents: { type: integer, description: Budget minus spent. Negative when over budget. }
+        categories: { type: array, items: { $ref: "#/components/schemas/CashflowCategoryTotal" }, description: "The group's expense categories with spending in the month, the largest first." }
+    CashflowCategoryTotal:
+      type: object
+      required: [categoryId, name, direction, totalCents, movementCount, role]
+      properties:
+        categoryId: { type: integer }
+        name: { type: string }
+        direction: { type: string, enum: [income, expense] }
+        totalCents: { type: integer }
+        movementCount: { type: integer }
+        role: { type: string, enum: ["", savings, investments, goals, credits], description: "The role of the category; empty for none." }
+    CashflowUserTotal:
+      type: object
+      required: [username, incomeCents, expenseCents, netCents, spentCents, putAsideCents, cashCents]
+      properties:
+        username: { type: string }
+        incomeCents: { type: integer }
+        expenseCents: { type: integer }
+        netCents: { type: integer }
+        spentCents: { type: integer, description: "expenseCents without putAsideCents. Credit payments count as spent." }
+        putAsideCents: { type: integer, description: "The expenses of the categories with the savings, investments or goals role." }
+        cashCents: { type: integer, nullable: true, description: "The person's cash at the end of the month; null when they have neither a typed bank balance nor a movement." }
+    CashflowUserMonth:
+      type: object
+      required: [month, username, incomeCents, putAsideCents]
+      properties:
+        month: { type: string, description: YYYY-MM. }
+        username: { type: string }
+        incomeCents: { type: integer }
+        putAsideCents: { type: integer }
+    CashflowMovement:
+      type: object
+      required: [id, date, username, category, direction, amountCents, description, createdAt]
+      properties:
+        id: { type: integer }
+        date: { type: string, description: Day of the movement as YYYY-MM-DD. }
+        username: { type: string }
+        category: { type: string }
+        direction: { type: string, enum: [income, expense] }
+        amountCents: { type: integer, description: Always positive; direction says which way the money moved. }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }

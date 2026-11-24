@@ -1,0 +1,4 @@
+account,name,target_cents,start_month,end_month,status
+Household,New car,600000,2026-06,2028-12,active
+Household,Summer trip,180000,2026-06,2027-07,active
+Household,Emergency buffer,300000,2026-06,2027-12,active

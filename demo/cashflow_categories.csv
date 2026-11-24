@@ -1,0 +1,25 @@
+name,direction,icon,color,budget_group,role
+Bank Fees,expense,landmark,#78716C,Essential,
+Bonus,income,award,#F59E0B,,
+Education,expense,graduation-cap,#7C3AED,Goals & Savings,
+Electricity,expense,zap,#EAB308,Essential,
+Gift,income,gift,#EC4899,,
+Gifts,expense,gift,#EC4899,Fun,
+Groceries,expense,shopping-basket,#65A30D,Essential,
+Health,expense,heart-pulse,#E11D48,Essential,
+Insurance,expense,shield-check,#64748B,Essential,
+Interest,income,percent,#0D9488,,
+Investments,expense,trending-up,#0D9488,Investment,investments
+Leisure,expense,gamepad-2,#D946EF,Fun,
+Meal Allowance,income,utensils,#84CC16,,
+Miscellaneous,expense,shapes,#9CA3AF,Fun,
+Mortgage,expense,house,#8D6E63,Essential,credits
+Objectives,expense,target,#A855F7,Goals & Savings,goals
+Others,income,ellipsis,#9CA3AF,,
+Restaurant,expense,utensils,#E76F51,Fun,
+Salary,income,briefcase,#16A34A,,
+Savings,expense,piggy-bank,#06B6D4,Goals & Savings,savings
+Security,expense,shield,#475569,Essential,
+Telecom,expense,smartphone,#6366F1,Essential,
+Transportation,expense,car-front,#0284C7,Essential,
+Water,expense,droplets,#2196F3,Essential,

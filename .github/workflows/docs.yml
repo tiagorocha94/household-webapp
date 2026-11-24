@@ -1,0 +1,34 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - '**/*.md'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - '**/*.md'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/docs.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Markdown links (local files only)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress '**/*.md'
+          fail: true
+      - name: OpenAPI
+        run: |
+          pip install openapi-spec-validator
+          openapi-spec-validator docs/architecture/openapi.yaml

@@ -1,0 +1,89 @@
+user,category,date,amount_cents,description,sync_id
+alex,Salary,2026-08-01,230000,Salary,b4a7d38d-a97e-558a-8963-06c0dea8d192
+sam,Salary,2026-08-01,190000,Salary,89952374-6b4f-5351-ae3c-64202a745531
+sam,Meal Allowance,2026-08-02,11000,,d15cee33-f2c2-54f4-807d-3a4fa2325e39
+alex,Mortgage,2026-08-03,64000,Home loan,a75cd066-0fbe-5238-b96d-03d66280acb0
+alex,Electricity,2026-08-08,5400,,ff0a47d9-4a75-5464-9b1b-120ba10f06a0
+alex,Water,2026-08-09,2300,,bf37df79-e003-57ea-aafc-c3a97ad7e514
+sam,Telecom,2026-08-10,4500,Phone and internet,ed23be13-e5c4-5df9-ac3f-f51f6bf56992
+alex,Insurance,2026-08-12,3800,Car insurance,73ca1e8c-444e-5d60-8c2b-002afbc80f8f
+sam,Groceries,2026-08-04,7620,,37bff195-0004-5f55-b296-1100556ecb56
+sam,Groceries,2026-08-11,5410,,1a0f43de-3209-5bb5-9898-c733dc92f353
+sam,Groceries,2026-08-18,8935,,91f68c51-03f4-5b93-8c05-20a2e64b1d9f
+sam,Groceries,2026-08-25,6280,,d7738397-63ce-5f25-aa8a-1e9c80e58107
+alex,Transportation,2026-08-06,4000,Fuel,ff49b9ed-eda6-5279-aa60-32befe2e4f94
+alex,Transportation,2026-08-20,3600,Fuel,b20c688b-29f1-50a3-94fd-617cd9aef9ce
+sam,Restaurant,2026-08-15,3850,,4a30ccbf-b33c-56e9-8273-abfb6c56a5db
+alex,Restaurant,2026-08-22,5200,Dinner out,bab45de1-471a-513c-afb4-eb6d40fe347c
+sam,Leisure,2026-08-17,2500,Cinema,45385489-6577-55ea-9084-47e93bb0483f
+alex,Miscellaneous,2026-08-19,1900,,004ce53b-26a8-5fe5-bbaf-ece7a9b07ea7
+sam,Savings,2026-08-02,15000,Monthly saving,ae2ba6a0-61f4-540b-a431-5e430bca7442
+alex,Investments,2026-08-02,10000,Monthly investment,db557a48-512a-5648-b28d-5cac44d265ef
+alex,Objectives,2026-08-02,20000,Goals deposit,1bacba34-3fb5-5f5f-97fe-2a59eaf06743
+alex,Salary,2026-09-01,230000,Salary,7ba95840-52ba-517d-8e37-3a080607b824
+sam,Salary,2026-09-01,190000,Salary,a6b45ee0-ab71-54fd-8cba-889e1804ab45
+sam,Meal Allowance,2026-09-02,11000,,f54a1525-028e-5f5a-ac69-5d96c5ee1971
+alex,Mortgage,2026-09-03,64000,Home loan,3b4831de-402c-5686-aaaf-4b6d812b8dbc
+alex,Electricity,2026-09-08,5700,,5c24709c-40f7-578f-b9e2-6fc95bcda7e7
+alex,Water,2026-09-09,2300,,8d3de286-8700-5fdd-8eba-9d57864e6816
+sam,Telecom,2026-09-10,4500,Phone and internet,364c6ec6-55da-5a92-bf6e-c4d83df0d42a
+alex,Insurance,2026-09-12,3800,Car insurance,ea343e8b-72f9-5460-ad7c-4f077ec67594
+sam,Groceries,2026-09-04,7750,,9c6d14a3-20bd-5a6b-b41f-44d3ee7a9ea9
+sam,Groceries,2026-09-11,5540,,de6afc3e-f262-575b-a97f-48130290432c
+sam,Groceries,2026-09-18,9065,,edabea81-72bb-5f59-9313-9329341ce9d0
+sam,Groceries,2026-09-25,6410,,d4756d2c-6ace-5221-b892-081b39d26d53
+alex,Transportation,2026-09-06,4250,Fuel,0a34c5ea-a343-5355-99fa-f32005ebd368
+alex,Transportation,2026-09-20,3600,Fuel,c72042c7-79be-521a-baa9-af98b0e781af
+sam,Restaurant,2026-09-15,4050,,b8ab6ac2-38f7-5ecc-8942-f4887ae35fe1
+alex,Restaurant,2026-09-22,5200,Dinner out,aa4c4724-61ed-5221-ba4e-6a326494e08d
+sam,Leisure,2026-09-17,2500,Cinema,0807d985-c1db-52f7-816e-e5a68b375daa
+alex,Miscellaneous,2026-09-19,2000,,fd87414c-1f25-58cd-9cd3-4797c6704518
+sam,Savings,2026-09-02,15000,Monthly saving,b126db42-e86d-5d69-bf15-eca753bb98a7
+alex,Investments,2026-09-02,10000,Monthly investment,b04e25a9-9d8e-53ff-8b44-74f5a27d90b1
+alex,Objectives,2026-09-02,20000,Goals deposit,c7c3783a-bc22-5896-9c22-2cef8a4c23d9
+alex,Salary,2026-10-01,230000,Salary,9ec8d4a8-03cf-5a63-b91e-8ea0377d4874
+sam,Salary,2026-10-01,190000,Salary,d56a6bcb-6099-57a1-8056-7eae7ab0e387
+sam,Meal Allowance,2026-10-02,11000,,424ac378-d014-5802-9703-bac6ac6c0453
+alex,Mortgage,2026-10-03,64000,Home loan,caae6e78-2fac-5d20-9b18-6bcf52119179
+alex,Electricity,2026-10-08,6000,,42b19e32-0163-5ade-b339-7b3963a96799
+alex,Water,2026-10-09,2300,,21e786ed-d57f-527e-8391-fb15d6ebdd89
+sam,Telecom,2026-10-10,4500,Phone and internet,5d409f93-21bf-5e3c-af33-c1ce11c17c17
+alex,Insurance,2026-10-12,3800,Car insurance,bc2f6409-aee8-58e7-b631-598f1d46fe1d
+sam,Groceries,2026-10-04,7880,,8cb8def3-138a-5705-add4-9646d36d3fd3
+sam,Groceries,2026-10-11,5670,,12e95e11-ba90-5887-a31d-b8b79eb26b8d
+sam,Groceries,2026-10-18,9195,,fa0c08db-4ff2-5ed7-bf98-7eb8957f9bb0
+sam,Groceries,2026-10-25,6540,,c1c5dcb1-68ea-55fd-b94f-4bc896737861
+alex,Transportation,2026-10-06,4500,Fuel,47936d7c-9685-55f9-9fb7-44dd3ac9042f
+alex,Transportation,2026-10-20,3600,Fuel,70df1572-14c3-5221-8f55-c7fe1514818f
+sam,Restaurant,2026-10-15,4250,,889f78f6-d3d6-5032-8ebf-8df640c7bd70
+alex,Restaurant,2026-10-22,5200,Dinner out,c4b9eff2-ffbf-5463-b4f7-dd6603247fc4
+sam,Leisure,2026-10-17,2500,Cinema,10a48adb-d390-53c4-b701-199e239a3715
+alex,Miscellaneous,2026-10-19,2100,,0741572a-57e5-589f-a148-69bfb89caedf
+sam,Savings,2026-10-02,15000,Monthly saving,de13916d-a61c-5cef-a190-31e848d97264
+alex,Investments,2026-10-02,10000,Monthly investment,e96663ba-bb5c-59aa-8422-fdcdc1d2d4c9
+alex,Objectives,2026-10-02,20000,Goals deposit,c77941d6-1d2b-5e75-934a-50c2d9855d70
+alex,Salary,2026-11-01,230000,Salary,d92cd326-1755-5ba4-9d23-0d4c3fcc4852
+sam,Salary,2026-11-01,190000,Salary,ef33aef7-e1ed-5053-b2c8-ee12409c2cb0
+sam,Meal Allowance,2026-11-02,11000,,35a34f11-9c0a-5fd2-80e9-59473ab6b5bc
+alex,Mortgage,2026-11-03,64000,Home loan,3c9088fa-3102-5148-9708-4ddd39032055
+alex,Electricity,2026-11-08,6300,,636ccdc2-e254-5517-8c14-8368d40fd76e
+alex,Water,2026-11-09,2300,,94716750-e2dc-54ef-b932-924190dbcb97
+sam,Telecom,2026-11-10,4500,Phone and internet,3466bdb8-e9ae-5e66-9ca0-7a01ff15e7c6
+alex,Insurance,2026-11-12,3800,Car insurance,23c66c08-d698-5f8f-888d-a77042629f76
+sam,Groceries,2026-11-04,8010,,7396202b-723e-571b-99ea-af1ac727be47
+sam,Groceries,2026-11-11,5800,,ae0cc428-8d1a-5d7d-bdf6-99d4a3fd9016
+sam,Groceries,2026-11-18,9325,,bff4b266-b329-5c03-993b-ccf2e2298451
+alex,Transportation,2026-11-06,4750,Fuel,95849a81-f1a8-5714-a8ac-dfbd6996889a
+alex,Transportation,2026-11-20,3600,Fuel,6a1a1f48-cffc-52fe-8f8f-e1622995d176
+sam,Restaurant,2026-11-15,4450,,c905e8c7-fc46-5bd3-8f00-ae0320a378e2
+alex,Restaurant,2026-11-22,5200,Dinner out,08f0b5de-4548-542f-b3c8-6b6e2d808408
+sam,Leisure,2026-11-17,2500,Cinema,800bd4ef-6aa0-5378-b64e-4080ebdb8ff7
+alex,Miscellaneous,2026-11-19,2200,,ed4bd393-0ffd-5334-baab-f6b41ff6e4dc
+sam,Savings,2026-11-02,15000,Monthly saving,2961ad00-4626-59fe-a1ea-1c9005309e4e
+alex,Investments,2026-11-02,10000,Monthly investment,bd37cc98-46e3-5920-af50-eea14d86f110
+alex,Objectives,2026-11-02,20000,Goals deposit,c58651d9-8b6a-5b3f-baf3-e7f5acb67061
+sam,Health,2026-09-14,4200,Pharmacy,d200efda-6521-50b9-82d7-59ae56037526
+alex,Education,2026-10-07,8900,Online course,4f90c5da-1c96-5863-b36e-7d5152f7d817
+sam,Gifts,2026-10-24,3500,Birthday gift,7292564c-beb9-53ea-8842-179b0234a1d5
+alex,Bonus,2026-10-28,40000,Annual bonus,d2b92135-280b-5613-b7ec-29b6620e78d5
+sam,Interest,2026-09-30,1250,,172074e4-9ef5-5877-88f4-f7838585b2cf

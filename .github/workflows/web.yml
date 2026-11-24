@@ -1,0 +1,44 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'web/**'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/web.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: formatting
+        run: npm run format:check
+      - name: generated API types are current
+        run: |
+          npm run api:types
+          git diff --exit-code -- src/api/schema.d.ts
+      - name: types
+        run: npm run check
+      - run: npm test
+      - run: npm run build

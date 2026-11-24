@@ -1,0 +1,60 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.golangci.yml'
+      - 'config.yaml'
+      - 'internal/database/migrations/**'
+      - 'seed/**'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.golangci.yml'
+      - 'config.yaml'
+      - 'internal/database/migrations/**'
+      - 'seed/**'
+      - 'docs/architecture/openapi.yaml'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tags, for the version built into the binary
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l $(git ls-files '*.go' ':!:vendor/**'))"
+      - name: build with version
+        run: make build && ./household-app -version
+      - run: go vet ./...
+      - name: error message style
+        # A negated command does not stop a bash script, so each check
+        # fails the job explicitly.
+        run: |
+          if git grep -nE 'Errorf\("(failed|error|unable)' -- '*.go'; then
+            echo "::error::error messages must not start with failed, error or unable"
+            exit 1
+          fi
+      - run: go test -shuffle=on ./...
+      - name: lint
+        run: make lint-code

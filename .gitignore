@@ -1,0 +1,30 @@
+# Binaries
+household-app
+household-app.exe
+
+# Real data never belongs in this repository: keep it in its own private repository and
+# point seed.dir at it.
+/seed/
+
+# The demo run's database and data copy (make demo)
+.demo/
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Vendored dependencies
+/vendor/

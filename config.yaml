@@ -1,0 +1,15 @@
+server:
+  host: 127.0.0.1
+  port: 8080
+  secure_cookies: false # true when served over HTTPS
+  # public_url: https://household.example.com # shown by "household-app device add"
+
+database:
+  path: household.db
+
+# The directory of CSV files: your data (see README), or demo data copied by "make demo".
+seed:
+  dir: seed
+
+log:
+  level: info
