@@ -6,6 +6,8 @@
   import Stats from '../components/Stats.svelte';
   import { formatChange } from '../lib/cashflow';
   import { t } from '../lib/i18n/index.svelte';
+  import { isEnabled } from '../lib/modules';
+  import { serverModules } from '../lib/modules.svelte';
   import { formatCents } from '../lib/money';
   import { formatMonth } from '../lib/month';
   import { changeOver, inRange, rangeLabel, ranges, type Range } from '../lib/networth';
@@ -13,6 +15,9 @@
 
   const history = new Resource(() => api.netWorth());
   let range = $state<Range>(12);
+  // The figures of a module that does not run are always zero, so they are left out.
+  const runs = (module: Parameters<typeof isEnabled>[1]) =>
+    isEnabled(serverModules.enabled, module);
 </script>
 
 <h1>{t('invest.networth.title')}</h1>
@@ -38,16 +43,18 @@
             : undefined}
         />
         <Stat label={t('invest.networth.assets')} value={formatCents(now.assetsCents)} />
-        <Stat
-          label={t('invest.networth.owedOnCredits')}
-          value={formatCents(now.creditCents)}
-          note={change
-            ? t('invest.networth.since', {
-                change: formatChange(change.creditCents),
-                month: formatMonth(change.since),
-              })
-            : undefined}
-        />
+        {#if runs('credits')}
+          <Stat
+            label={t('invest.networth.owedOnCredits')}
+            value={formatCents(now.creditCents)}
+            note={change
+              ? t('invest.networth.since', {
+                  change: formatChange(change.creditCents),
+                  month: formatMonth(change.since),
+                })
+              : undefined}
+          />
+        {/if}
         <Stat label={t('invest.networth.cash')} value={formatCents(now.cashCents)} />
       </Stats>
 
@@ -69,12 +76,20 @@
             <thead>
               <tr>
                 <th>{t('invest.networth.month')}</th>
-                <th class="num">{t('invest.networth.savings')}</th>
-                <th class="num">{t('invest.networth.investments')}</th>
-                <th class="num">{t('invest.networth.goals')}</th>
+                {#if runs('savings')}
+                  <th class="num">{t('invest.networth.savings')}</th>
+                {/if}
+                {#if runs('investments')}
+                  <th class="num">{t('invest.networth.investments')}</th>
+                {/if}
+                {#if runs('goals')}
+                  <th class="num">{t('invest.networth.goals')}</th>
+                {/if}
                 <th class="num">{t('invest.networth.cash')}</th>
                 <th class="num">{t('invest.networth.assets')}</th>
-                <th class="num">{t('invest.networth.owed')}</th>
+                {#if runs('credits')}
+                  <th class="num">{t('invest.networth.owed')}</th>
+                {/if}
                 <th class="num">{t('invest.networth.title')}</th>
               </tr>
             </thead>
@@ -82,12 +97,20 @@
               {#each months.slice(-6).reverse() as m (m.month)}
                 <tr>
                   <td>{formatMonth(m.month)}</td>
-                  <td class="num">{formatCents(m.savingsCents)}</td>
-                  <td class="num">{formatCents(m.investmentsCents)}</td>
-                  <td class="num">{formatCents(m.goalsCents)}</td>
+                  {#if runs('savings')}
+                    <td class="num">{formatCents(m.savingsCents)}</td>
+                  {/if}
+                  {#if runs('investments')}
+                    <td class="num">{formatCents(m.investmentsCents)}</td>
+                  {/if}
+                  {#if runs('goals')}
+                    <td class="num">{formatCents(m.goalsCents)}</td>
+                  {/if}
                   <td class="num">{formatCents(m.cashCents)}</td>
                   <td class="num">{formatCents(m.assetsCents)}</td>
-                  <td class="num">{formatCents(m.creditCents)}</td>
+                  {#if runs('credits')}
+                    <td class="num">{formatCents(m.creditCents)}</td>
+                  {/if}
                   <td class="num"><strong>{formatCents(m.netCents)}</strong></td>
                 </tr>
               {/each}

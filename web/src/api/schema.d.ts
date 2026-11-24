@@ -1772,12 +1772,17 @@ export interface components {
             month: string;
             /** @description Things that need looking at: goals funding shortfalls first, then budget groups over their budget. Empty when there are none. */
             attention: components["schemas"]["OverviewAttention"][];
-            goals: components["schemas"]["OverviewGoals"];
-            credit: components["schemas"]["OverviewCredit"];
-            investments: components["schemas"]["OverviewInvestments"];
-            savings: components["schemas"]["OverviewSavings"];
+            /** @description Left out when the goals module does not run. */
+            goals?: components["schemas"]["OverviewGoals"];
+            /** @description Left out when the credits module does not run. */
+            credit?: components["schemas"]["OverviewCredit"];
+            /** @description Left out when the investments module does not run. */
+            investments?: components["schemas"]["OverviewInvestments"];
+            /** @description Left out when the savings module does not run. */
+            savings?: components["schemas"]["OverviewSavings"];
             netWorth: components["schemas"]["OverviewNetWorth"];
-            cashflow: components["schemas"]["OverviewCashflow"];
+            /** @description Left out when the cashflow module does not run. */
+            cashflow?: components["schemas"]["OverviewCashflow"];
             /** @description Every active goal, the soonest end first. */
             activeGoals: components["schemas"]["OverviewGoal"][];
             /** @description Every active credit contract. */

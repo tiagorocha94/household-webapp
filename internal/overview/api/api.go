@@ -16,15 +16,16 @@ type Handler struct {
 	history *overview.History
 }
 
+// apiOverview leaves out the section of a module that does not run.
 type apiOverview struct {
 	Month       string           `json:"month"`
 	Attention   []apiAttention   `json:"attention"`
-	Goals       apiGoals         `json:"goals"`
-	Credit      apiCredit        `json:"credit"`
-	Investments apiInvestments   `json:"investments"`
-	Savings     apiSavings       `json:"savings"`
+	Goals       *apiGoals        `json:"goals,omitempty"`
+	Credit      *apiCredit       `json:"credit,omitempty"`
+	Investments *apiInvestments  `json:"investments,omitempty"`
+	Savings     *apiSavings      `json:"savings,omitempty"`
 	NetWorth    apiNetWorth      `json:"netWorth"`
-	Cashflow    apiCashflow      `json:"cashflow"`
+	Cashflow    *apiCashflow     `json:"cashflow,omitempty"`
 	ActiveGoals []apiGoalRow     `json:"activeGoals"`
 	Contracts   []apiContractRow `json:"contracts"`
 	Holdings    []apiHoldingRow  `json:"holdings"`
@@ -208,28 +209,41 @@ func toAPI(o overview.Overview) apiOverview {
 	out := apiOverview{
 		Month:       o.Month,
 		Attention:   make([]apiAttention, 0, len(o.Attention)),
-		Goals:       apiGoals{SavedCents: o.Goals.SavedCents, TargetCents: o.Goals.TargetCents},
-		Credit:      apiCredit(o.Credit),
-		Investments: apiInvestments(o.Investments),
-		Savings:     toAPISavings(o.Savings),
 		NetWorth:    toAPINetWorth(o.NetWorth),
-		Cashflow: apiCashflow{
-			Month: o.Cashflow.Month, IncomeCents: o.Cashflow.IncomeCents,
-			ExpenseCents: o.Cashflow.ExpenseCents, SavedCents: o.Cashflow.SavedCents,
-			NetCents:             o.Cashflow.NetCents,
-			SavingsRatePct:       o.Cashflow.SavingsRatePct,
-			PreviousExpenseCents: o.Cashflow.PreviousExpenseCents,
-			Groups:               make([]apiGroupRow, 0, len(o.Cashflow.Groups)),
-		},
 		ActiveGoals: make([]apiGoalRow, 0, len(o.ActiveGoals)),
 		Contracts:   make([]apiContractRow, 0, len(o.Contracts)),
 		Holdings:    make([]apiHoldingRow, 0, len(o.Holdings)),
 	}
+	if g := o.Goals; g != nil {
+		out.Goals = &apiGoals{SavedCents: g.SavedCents, TargetCents: g.TargetCents}
+	}
+	if c := o.Credit; c != nil {
+		credit := apiCredit(*c)
+		out.Credit = &credit
+	}
+	if i := o.Investments; i != nil {
+		investments := apiInvestments(*i)
+		out.Investments = &investments
+	}
+	if sv := o.Savings; sv != nil {
+		savings := toAPISavings(*sv)
+		out.Savings = &savings
+	}
+	if cf := o.Cashflow; cf != nil {
+		out.Cashflow = &apiCashflow{
+			Month: cf.Month, IncomeCents: cf.IncomeCents,
+			ExpenseCents: cf.ExpenseCents, SavedCents: cf.SavedCents,
+			NetCents:             cf.NetCents,
+			SavingsRatePct:       cf.SavingsRatePct,
+			PreviousExpenseCents: cf.PreviousExpenseCents,
+			Groups:               make([]apiGroupRow, 0, len(cf.Groups)),
+		}
+		for _, g := range cf.Groups {
+			out.Cashflow.Groups = append(out.Cashflow.Groups, apiGroupRow(g))
+		}
+	}
 	for _, a := range o.Attention {
 		out.Attention = append(out.Attention, apiAttention(a))
-	}
-	for _, g := range o.Cashflow.Groups {
-		out.Cashflow.Groups = append(out.Cashflow.Groups, apiGroupRow(g))
 	}
 	for _, g := range o.ActiveGoals {
 		out.ActiveGoals = append(out.ActiveGoals, apiGoalRow(g))

@@ -114,30 +114,32 @@ describe('nextInstalment', () => {
 });
 
 describe('isEmpty', () => {
+  const savings = {
+    balanceCents: 0,
+    targetCents: 0,
+    accounts: 0,
+    interestCents: 0,
+    items: [],
+  };
+  const cashflow = {
+    month: '2026-11',
+    incomeCents: 0,
+    expenseCents: 0,
+    savedCents: 0,
+    netCents: 0,
+    savingsRatePct: 0,
+    previousExpenseCents: 0,
+    groups: [],
+  };
   const empty: Overview = {
     month: '2026-11',
     attention: [],
     goals: { savedCents: 0, targetCents: 0 },
     credit: { outstandingCents: 0, monthlyInstalmentCents: 0, activeContracts: 0 },
     investments: { currentValueCents: 0 },
-    savings: {
-      balanceCents: 0,
-      targetCents: 0,
-      accounts: 0,
-      interestCents: 0,
-      items: [],
-    },
+    savings,
     netWorth: { assetsCents: 0, cashCents: 0, cashByUser: [], creditCents: 0, netCents: 0 },
-    cashflow: {
-      month: '2026-11',
-      incomeCents: 0,
-      expenseCents: 0,
-      savedCents: 0,
-      netCents: 0,
-      savingsRatePct: 0,
-      previousExpenseCents: 0,
-      groups: [],
-    },
+    cashflow,
     activeGoals: [],
     contracts: [],
     holdings: [],
@@ -148,8 +150,16 @@ describe('isEmpty', () => {
     expect(isEmpty({ ...empty, holdings: [{ id: 1, name: 'Broker', valueCents: 100 }] })).toBe(
       false,
     );
-    expect(isEmpty({ ...empty, cashflow: { ...empty.cashflow, expenseCents: 1 } })).toBe(false);
-    expect(isEmpty({ ...empty, savings: { ...empty.savings, accounts: 1 } })).toBe(false);
+    expect(isEmpty({ ...empty, cashflow: { ...cashflow, expenseCents: 1 } })).toBe(false);
+    expect(isEmpty({ ...empty, savings: { ...savings, accounts: 1 } })).toBe(false);
+  });
+
+  it('counts a module that does not run as having nothing', () => {
+    const { savings: _s, cashflow: _c, ...cashflowAndSavingsOff } = empty;
+    expect(isEmpty(cashflowAndSavingsOff)).toBe(true);
+    expect(isEmpty({ ...cashflowAndSavingsOff, cashflow: { ...cashflow, incomeCents: 5 } })).toBe(
+      false,
+    );
   });
 });
 

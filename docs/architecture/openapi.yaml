@@ -701,16 +701,16 @@ components:
         createdAt: { type: string, format: date-time }
     Overview:
       type: object
-      required: [month, attention, goals, credit, investments, savings, netWorth, cashflow, activeGoals, contracts, holdings]
+      required: [month, attention, netWorth, activeGoals, contracts, holdings]
       properties:
         month: { type: string, description: The current month as YYYY-MM. }
         attention: { type: array, items: { $ref: "#/components/schemas/OverviewAttention" }, description: "Things that need looking at: goals funding shortfalls first, then budget groups over their budget. Empty when there are none." }
-        goals: { $ref: "#/components/schemas/OverviewGoals" }
-        credit: { $ref: "#/components/schemas/OverviewCredit" }
-        investments: { $ref: "#/components/schemas/OverviewInvestments" }
-        savings: { $ref: "#/components/schemas/OverviewSavings" }
+        goals: { $ref: "#/components/schemas/OverviewGoals", description: "Left out when the goals module does not run." }
+        credit: { $ref: "#/components/schemas/OverviewCredit", description: "Left out when the credits module does not run." }
+        investments: { $ref: "#/components/schemas/OverviewInvestments", description: "Left out when the investments module does not run." }
+        savings: { $ref: "#/components/schemas/OverviewSavings", description: "Left out when the savings module does not run." }
         netWorth: { $ref: "#/components/schemas/OverviewNetWorth" }
-        cashflow: { $ref: "#/components/schemas/OverviewCashflow" }
+        cashflow: { $ref: "#/components/schemas/OverviewCashflow", description: "Left out when the cashflow module does not run." }
         activeGoals: { type: array, items: { $ref: "#/components/schemas/OverviewGoal" }, description: "Every active goal, the soonest end first." }
         contracts: { type: array, items: { $ref: "#/components/schemas/OverviewContract" }, description: Every active credit contract. }
         holdings: { type: array, items: { $ref: "#/components/schemas/OverviewHolding" }, description: The current value at each investment entity. }
