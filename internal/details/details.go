@@ -1,25 +1,23 @@
-// Package details writes where the money of a cashflow movement went: a savings
-// deposit, investment contributions or a credit payment, linked to the movement
-// by its sync ID (ADR 021). It runs inside the transaction that writes the
-// movement, so the two arrive together or not at all. The rows live in the
-// tables of their own modules, and each module's CSV files are rewritten after
-// the change (see csvstate).
+// Package details is the contract between cashflow and the modules that keep
+// where the money of a movement went: a savings deposit, investment
+// contributions or a credit payment, linked to the movement by its sync ID
+// (ADR 021). Cashflow only knows the Registry; each module that runs adds an
+// Applier that writes into its own tables, so cashflow never touches them and
+// a module that does not run is simply absent. An Applier runs inside the
+// transaction that writes the movement, so the two arrive together or not at
+// all, and the module's CSV files are rewritten after the change (see
+// csvstate).
 package details
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/money"
-)
-
-// Names of the modules whose files a detail changes, as csvstate knows them.
-const (
-	SavingsModule     = "savings"
-	InvestmentsModule = "investments"
-	CreditsModule     = "credits"
 )
 
 // Input is one movement and the detail that goes with it.
@@ -54,105 +52,168 @@ type Savings struct {
 	ValueCents *money.Cents
 }
 
-// kinds counts the parts that are set.
-func (d *Detail) kinds() int {
-	n := 0
-	for _, set := range []bool{d.Savings != nil, d.Investments != nil, d.Credit != nil} {
-		if set {
-			n++
+// Credit is a payment on a credit. Credits have no owner, so anyone can add
+// one. The principal and the interest add up to the movement's amount.
+type Credit struct {
+	CreditID       int64
+	PrincipalCents money.Cents
+	InterestCents  money.Cents
+	// Extraordinary marks a payment on top of the regular one of the month.
+	Extraordinary bool
+}
+
+// Investments is money put into the instruments of one investment account. The
+// lines may add up to less than the movement while the split is incomplete,
+// never to more. No lines keeps nothing, as there is no instrument to hold it.
+type Investments struct {
+	EntityID int64
+	Lines    []InvestmentLine
+}
+
+// InvestmentLine is the part of the movement that went into one instrument.
+type InvestmentLine struct {
+	InstrumentID int64
+	AmountCents  money.Cents
+	// ValueCents is the instrument's value seen now. Nil records nothing.
+	ValueCents *money.Cents
+}
+
+// An Applier keeps the detail of one module. Its Module is also the category
+// role that module serves. Every method runs in the movement's transaction.
+type Applier interface {
+	// Module is the module's name, as in package modules.
+	Module() string
+	// Noun says what the module takes, for a refusal: "a savings detail".
+	Noun() string
+	// Check says why the detail cannot be written, or "" when it can. The
+	// module's part of d is set. It reads only.
+	Check(tx *sql.Tx, in Input, d Detail) (string, error)
+	// CheckFit refuses a change of the movement that no longer fits what the
+	// module stored for it, when the request carries no detail.
+	CheckFit(tx *sql.Tx, in Input) (string, error)
+	// Apply makes what the module stores match the module's part of d.
+	Apply(tx *sql.Tx, in Input, d Detail) error
+	// Follow moves what the module stored to the movement's month and amount.
+	Follow(tx *sql.Tx, in Input) error
+	// Remove deletes what the module stored for the movement.
+	Remove(tx *sql.Tx, syncID string) error
+}
+
+// Registry holds the appliers of the modules that run, in the order they act.
+// A nil Registry has none, so no detail can be saved.
+type Registry struct {
+	appliers []Applier
+}
+
+// kinds names the modules whose part of the detail is set.
+func (d *Detail) kinds() []string {
+	var out []string
+	if d.Savings != nil {
+		out = append(out, modules.Savings)
+	}
+	if d.Investments != nil {
+		out = append(out, modules.Investments)
+	}
+	if d.Credit != nil {
+		out = append(out, modules.Credits)
+	}
+	return out
+}
+
+// has reports whether the part of the module is set.
+func (d *Detail) has(module string) bool {
+	return slices.Contains(d.kinds(), module)
+}
+
+// NewRegistry returns a Registry of the given appliers.
+func NewRegistry(appliers ...Applier) *Registry {
+	return &Registry{appliers: appliers}
+}
+
+func (r *Registry) list() []Applier {
+	if r == nil {
+		return nil
+	}
+	return r.appliers
+}
+
+func (r *Registry) find(module string) Applier {
+	for _, a := range r.list() {
+		if a.Module() == module {
+			return a
 		}
 	}
-	return n
+	return nil
 }
 
 // Check says why the detail cannot be written, or "" when it can. It reads
 // only and changes nothing. A category that does not exist passes: the
 // movement's own write refuses it.
-func Check(tx *sql.Tx, in Input) (string, error) {
+func (r *Registry) Check(tx *sql.Tx, in Input) (string, error) {
 	role, found, err := categoryRole(tx, in.Category)
 	if err != nil || !found {
 		return "", err
 	}
 	d := in.Detail
-	switch {
-	case d != nil && d.kinds() > 1:
-		return "a detail holds one kind of detail, not several", nil
-	case d != nil && d.Savings != nil:
-		if role != "savings" {
-			return fmt.Sprintf("category %q has no savings role, so it cannot carry a savings detail", in.Category), nil
+	if d == nil {
+		if a := r.find(role); a != nil {
+			return a.CheckFit(tx, in)
 		}
-		return checkSavings(tx, in.UserID, *d.Savings)
-	case d != nil && d.Investments != nil:
-		if role != "investments" {
-			return fmt.Sprintf("category %q has no investments role, so it cannot carry an investments detail", in.Category), nil
-		}
-		return checkInvestments(tx, in, *d.Investments)
-	case d != nil && d.Credit != nil:
-		if role != "credits" {
-			return fmt.Sprintf("category %q has no credits role, so it cannot carry a credit payment", in.Category), nil
-		}
-		return checkCredit(tx, in, *d.Credit)
-	case d == nil && role == "investments":
-		return checkInvestmentsFit(tx, in)
-	case d == nil && role == "credits":
-		return checkCreditFit(tx, in)
+		return "", nil
 	}
-	return "", nil
+	kinds := d.kinds()
+	switch {
+	case len(kinds) > 1:
+		return "a detail holds one kind of detail, not several", nil
+	case len(kinds) == 0:
+		return "", nil
+	}
+	a := r.find(kinds[0])
+	if a == nil {
+		return fmt.Sprintf("the %s module does not run on this server, so it cannot take a detail", kinds[0]), nil
+	}
+	if role != kinds[0] {
+		return fmt.Sprintf("category %q has no %s role, so it cannot carry %s", in.Category, kinds[0], a.Noun()), nil
+	}
+	return a.Check(tx, in, *d)
 }
 
 // Apply writes the detail. Call it after Check passed and after the movement
 // itself was written.
-func Apply(tx *sql.Tx, in Input) error {
+func (r *Registry) Apply(tx *sql.Tx, in Input) error {
 	role, _, err := categoryRole(tx, in.Category)
 	if err != nil {
 		return err
 	}
 	d := in.Detail
-	// A kind of detail is replaced when the request carries it, removed when
+	// A module's detail is replaced when the request carries it, removed when
 	// the request carries another detail or the category lost the role, and
 	// otherwise follows the movement.
-	switch {
-	case d != nil && d.Savings != nil:
-		err = applySavings(tx, in, *d.Savings)
-	case d != nil || role != "savings":
-		err = removeSavings(tx, in.SyncID)
-	default:
-		err = followSavings(tx, in)
+	for _, a := range r.list() {
+		switch m := a.Module(); {
+		case d != nil && d.has(m):
+			err = a.Apply(tx, in, *d)
+		case d != nil || role != m:
+			err = a.Remove(tx, in.SyncID)
+		default:
+			err = a.Follow(tx, in)
+		}
+		if err != nil {
+			return err
+		}
 	}
-	if err != nil {
-		return err
-	}
-	switch {
-	case d != nil && d.Investments != nil:
-		err = applyInvestments(tx, in, *d.Investments)
-	case d != nil || role != "investments":
-		err = removeInvestments(tx, in.SyncID)
-	default:
-		err = followInvestments(tx, in)
-	}
-	if err != nil {
-		return err
-	}
-	switch {
-	case d != nil && d.Credit != nil:
-		return applyCredit(tx, in, *d.Credit)
-	case d != nil || role != "credits":
-		return removeCredit(tx, in.SyncID)
-	default:
-		return followCredit(tx, in)
-	}
+	return nil
 }
 
 // Remove deletes the detail of a movement that was deleted. Snapshots the
 // person typed stay.
-func Remove(tx *sql.Tx, syncID string) error {
-	if err := removeSavings(tx, syncID); err != nil {
-		return err
+func (r *Registry) Remove(tx *sql.Tx, syncID string) error {
+	for _, a := range r.list() {
+		if err := a.Remove(tx, syncID); err != nil {
+			return err
+		}
 	}
-	if err := removeInvestments(tx, syncID); err != nil {
-		return err
-	}
-	return removeCredit(tx, syncID)
+	return nil
 }
 
 // categoryRole returns the role of a category, "" when it has none, and
@@ -169,109 +230,9 @@ func categoryRole(tx *sql.Tx, name string) (role string, found bool, err error) 
 	return r.String, true, nil
 }
 
-func checkSavings(tx *sql.Tx, userID int64, s Savings) (string, error) {
-	var owner sql.NullInt64
-	err := tx.QueryRow("SELECT user_id FROM savings_accounts WHERE id = ?", s.AccountID).Scan(&owner)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Sprintf("savings account %d does not exist", s.AccountID), nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("find savings account %d: %w", s.AccountID, err)
-	}
-	if owner.Valid && owner.Int64 != userID {
-		return fmt.Sprintf("savings account %d belongs to another person", s.AccountID), nil
-	}
-	if s.ValueCents != nil && *s.ValueCents < 0 {
-		return "the value of a savings account cannot be negative", nil
-	}
-	return "", nil
-}
-
-// applySavings makes the movement's deposit match, adding it when there is none,
-// and records the value seen now when one was given.
-func applySavings(tx *sql.Tx, in Input, s Savings) error {
-	changed := false
-
-	var id, accountID int64
-	var month string
-	var cents money.Cents
-	err := tx.QueryRow(
-		`SELECT id, account_id, month, amount_cents FROM savings_movements
-		 WHERE movement_sync_id = ? ORDER BY id LIMIT 1`,
-		in.SyncID,
-	).Scan(&id, &accountID, &month, &cents)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		if _, err := tx.Exec(
-			`INSERT INTO savings_movements (account_id, month, type, amount_cents, movement_sync_id)
-			 VALUES (?, ?, 'deposit', ?, ?)`,
-			s.AccountID, in.Month, in.AmountCents, in.SyncID,
-		); err != nil {
-			return fmt.Errorf("insert the savings deposit of movement %s: %w", in.SyncID, err)
-		}
-		changed = true
-	case err != nil:
-		return fmt.Errorf("find the savings deposit of movement %s: %w", in.SyncID, err)
-	case accountID != s.AccountID || month != in.Month || cents != in.AmountCents:
-		if _, err := tx.Exec(
-			`UPDATE savings_movements
-			 SET account_id = ?, month = ?, amount_cents = ?, updated_at = CURRENT_TIMESTAMP
-			 WHERE id = ?`,
-			s.AccountID, in.Month, in.AmountCents, id,
-		); err != nil {
-			return fmt.Errorf("update the savings deposit of movement %s: %w", in.SyncID, err)
-		}
-		changed = true
-	}
-
-	if s.ValueCents != nil {
-		var same int
-		if err := tx.QueryRow(
-			`SELECT COUNT(*) FROM savings_snapshots WHERE account_id = ? AND month = ? AND value_cents = ?`,
-			s.AccountID, in.Month, *s.ValueCents,
-		).Scan(&same); err != nil {
-			return fmt.Errorf("find the savings snapshot of account %d: %w", s.AccountID, err)
-		}
-		if same == 0 {
-			if _, err := tx.Exec(
-				`INSERT INTO savings_snapshots (account_id, month, value_cents) VALUES (?, ?, ?)`,
-				s.AccountID, in.Month, *s.ValueCents,
-			); err != nil {
-				return fmt.Errorf("insert the savings snapshot of account %d: %w", s.AccountID, err)
-			}
-			changed = true
-		}
-	}
-
-	if changed {
-		return csvstate.Raise(tx, SavingsModule)
-	}
-	return nil
-}
-
-// followSavings moves an existing deposit to the movement's month and amount.
-func followSavings(tx *sql.Tx, in Input) error {
-	res, err := tx.Exec(
-		`UPDATE savings_movements
-		 SET month = ?, amount_cents = ?, updated_at = CURRENT_TIMESTAMP
-		 WHERE movement_sync_id = ? AND (month IS NOT ? OR amount_cents IS NOT ?)`,
-		in.Month, in.AmountCents, in.SyncID, in.Month, in.AmountCents,
-	)
-	if err != nil {
-		return fmt.Errorf("update the savings deposit of movement %s: %w", in.SyncID, err)
-	}
-	return raiseIfChanged(tx, res, SavingsModule)
-}
-
-func removeSavings(tx *sql.Tx, syncID string) error {
-	res, err := tx.Exec("DELETE FROM savings_movements WHERE movement_sync_id = ?", syncID)
-	if err != nil {
-		return fmt.Errorf("delete the savings deposit of movement %s: %w", syncID, err)
-	}
-	return raiseIfChanged(tx, res, SavingsModule)
-}
-
-func raiseIfChanged(tx *sql.Tx, res sql.Result, module string) error {
+// RaiseIfChanged marks the module's CSV files as behind when the statement
+// changed a row. Appliers use it after an UPDATE or DELETE.
+func RaiseIfChanged(tx *sql.Tx, res sql.Result, module string) error {
 	n, err := res.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("count the changed %s rows: %w", module, err)

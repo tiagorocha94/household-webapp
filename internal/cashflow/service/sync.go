@@ -56,11 +56,13 @@ func (s *Service) EnableMirror(m Mirror, log *slog.Logger) {
 	s.mirror, s.log = m, log
 }
 
-// EnableDetailMirrors makes every batch that changes the detail of a movement
-// rewrite the CSV files of the modules the detail belongs to, in the same way
-// as EnableMirror does for the movements file.
-func (s *Service) EnableDetailMirrors(ms ...Mirror) {
-	s.detailMirrors = ms
+// EnableDetails says which modules keep the detail of a movement, and so
+// which kinds of detail a device may send: r holds one applier per module that
+// runs, and each of those modules also has a mirror, which every batch that
+// changes a detail uses to rewrite the module's CSV files, in the same way as
+// EnableMirror does for the movements file. Without it no detail is accepted.
+func (s *Service) EnableDetails(r *details.Registry, ms ...Mirror) {
+	s.details, s.detailMirrors = r, ms
 }
 
 // ApplySync applies a device's operations for one person, in order, and
@@ -80,7 +82,7 @@ func (s *Service) ApplySync(userID int64, ops []SyncOperation) ([]SyncResult, er
 	err := s.store.Write(func(w *store.Writer) error {
 		results = results[:0]
 		for _, op := range ops {
-			reason, err := applyOperation(w, userID, op)
+			reason, err := s.applyOperation(w, userID, op)
 			if err != nil {
 				return err
 			}
@@ -107,7 +109,7 @@ func (s *Service) ApplySync(userID int64, ops []SyncOperation) ([]SyncResult, er
 
 // applyOperation does one operation. It returns a reason when the operation is
 // refused, and an error only when the database fails.
-func applyOperation(w *store.Writer, userID int64, op SyncOperation) (string, error) {
+func (s *Service) applyOperation(w *store.Writer, userID int64, op SyncOperation) (string, error) {
 	switch op.Op {
 	case OpUpsert:
 		m := cashflow.MovementWrite{
@@ -127,14 +129,14 @@ func applyOperation(w *store.Writer, userID int64, op SyncOperation) (string, er
 		}
 		// The detail is checked first so that a movement whose detail is
 		// refused is not written at all.
-		reason, err := details.Check(w.Tx(), in)
+		reason, err := s.details.Check(w.Tx(), in)
 		if err != nil || reason != "" {
 			return reason, err
 		}
 		if _, err := w.UpsertMovement(m); err != nil {
 			return refusal(err)
 		}
-		return "", details.Apply(w.Tx(), in)
+		return "", s.details.Apply(w.Tx(), in)
 	case OpDelete:
 		if !cashflow.ValidSyncID(op.SyncID) {
 			return fmt.Sprintf("sync_id %q is not a lowercase UUID", op.SyncID), nil
@@ -142,7 +144,7 @@ func applyOperation(w *store.Writer, userID int64, op SyncOperation) (string, er
 		if _, err := w.DeleteMovement(userID, op.SyncID); err != nil {
 			return refusal(err)
 		}
-		return "", details.Remove(w.Tx(), op.SyncID)
+		return "", s.details.Remove(w.Tx(), op.SyncID)
 	default:
 		return fmt.Sprintf("unknown operation %q, want %q or %q", op.Op, OpUpsert, OpDelete), nil
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/details"
 	"github.com/tiagorocha94/household-webapp/internal/investments"
+	investmentsdetail "github.com/tiagorocha94/household-webapp/internal/investments/detail"
 	"github.com/tiagorocha94/household-webapp/internal/money"
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
@@ -36,7 +37,7 @@ func newInvestFixture(t *testing.T) *investFixture {
 	inv.fund = testutil.MustExec(t, f.db, `INSERT INTO investment_instruments (entity_id, name, type) VALUES (?, 'Bond fund', 'fund')`, inv.aliceEntity)
 	inv.bobFund = testutil.MustExec(t, f.db, `INSERT INTO investment_instruments (entity_id, name, type) VALUES (?, 'Bob fund', 'fund')`, inv.bobEntity)
 	inv.houseFund = testutil.MustExec(t, f.db, `INSERT INTO investment_instruments (entity_id, name, type) VALUES (?, 'House fund', 'fund')`, inv.houseEntity)
-	f.svc.EnableDetailMirrors(csvstate.NewMirror(f.db, f.dir, investments.SeedModule{}))
+	f.svc.EnableDetails(details.NewRegistry(investmentsdetail.Applier{}), csvstate.NewMirror(f.db, f.dir, investments.SeedModule{}))
 	return inv
 }
 

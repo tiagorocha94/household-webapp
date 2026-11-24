@@ -11,6 +11,7 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/details"
 	"github.com/tiagorocha94/household-webapp/internal/money"
 	"github.com/tiagorocha94/household-webapp/internal/savings"
+	savingsdetail "github.com/tiagorocha94/household-webapp/internal/savings/detail"
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
 
@@ -25,7 +26,7 @@ func newDetailFixture(t *testing.T) (f *syncFixture, aliceAcc, bobAcc, houseAcc 
 	aliceAcc = testutil.MustExec(t, f.db, `INSERT INTO savings_accounts (name, user_id) VALUES ('Alice fund', ?)`, f.aliceID)
 	bobAcc = testutil.MustExec(t, f.db, `INSERT INTO savings_accounts (name, user_id) VALUES ('Bob fund', ?)`, f.bobID)
 	houseAcc = testutil.MustExec(t, f.db, `INSERT INTO savings_accounts (name) VALUES ('Household fund')`)
-	f.svc.EnableDetailMirrors(csvstate.NewMirror(f.db, f.dir, savings.SeedModule{}))
+	f.svc.EnableDetails(details.NewRegistry(savingsdetail.Applier{}), csvstate.NewMirror(f.db, f.dir, savings.SeedModule{}))
 	return f, aliceAcc, bobAcc, houseAcc
 }
 
@@ -225,5 +226,26 @@ func TestSavingsImportKeepsDeviceChangesWhileTheFilesAreBehind(t *testing.T) {
 
 	if got := f.deposits(t, sid(1)); len(got) != 1 {
 		t.Errorf("deposits = %v, want the deposit kept: an empty file must not undo device changes", got)
+	}
+}
+
+// A module that does not run has no applier, so cashflow alone still takes
+// movements, and a detail for the absent module is refused.
+func TestSyncWithoutTheDetailModulesTakesMovementsButNotDetails(t *testing.T) {
+	f := newSyncFixture(t)
+	testutil.MustExec(t, f.db, `INSERT INTO cashflow_categories (name, direction, icon, color, role) VALUES ('rainy day', 'expense', 'piggy-bank', '#0EA5E9', 'savings')`)
+	f.svc.EnableDetails(details.NewRegistry())
+
+	f.requireOK(t, f.apply(t, f.aliceID, rainy(1, "2026-03-05", 25000, nil)))
+	if got := f.rows(t); len(got) != 1 {
+		t.Fatalf("movements = %v, want the one without a detail", got)
+	}
+
+	res := f.apply(t, f.aliceID, rainy(2, "2026-03-06", 1000, deposit(1)))
+	if !strings.Contains(res[0].Rejected, "does not run") {
+		t.Errorf("reason = %q, want it to say the module does not run", res[0].Rejected)
+	}
+	if got := f.rows(t); len(got) != 1 {
+		t.Errorf("movements = %v, want the refused one left out", got)
 	}
 }

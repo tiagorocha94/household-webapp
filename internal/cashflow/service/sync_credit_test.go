@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/tiagorocha94/household-webapp/internal/credits"
+	creditsdetail "github.com/tiagorocha94/household-webapp/internal/credits/detail"
 	"github.com/tiagorocha94/household-webapp/internal/csvdata"
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/details"
@@ -24,7 +25,7 @@ func newCreditFixture(t *testing.T) (f *syncFixture, creditID int64) {
 	creditID = testutil.MustExec(t, f.db, `INSERT INTO credit_contracts
 		(name, category, contract_number, lender, original_principal_cents, start_month)
 		VALUES ('Car loan', 'car', 'C-1', 'Bank', 1000000, '2026-01')`)
-	f.svc.EnableDetailMirrors(csvstate.NewMirror(f.db, f.dir, credits.SeedModule{}))
+	f.svc.EnableDetails(details.NewRegistry(creditsdetail.Applier{}), csvstate.NewMirror(f.db, f.dir, credits.SeedModule{}))
 	return f, creditID
 }
 

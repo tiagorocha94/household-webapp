@@ -6,6 +6,7 @@ import (
 
 	"github.com/tiagorocha94/household-webapp/internal/apperr"
 	"github.com/tiagorocha94/household-webapp/internal/cashflow/store"
+	"github.com/tiagorocha94/household-webapp/internal/details"
 	"github.com/tiagorocha94/household-webapp/internal/month"
 )
 
@@ -15,7 +16,8 @@ type Service struct {
 	// mirror and log are set by EnableMirror.
 	mirror Mirror
 	log    *slog.Logger
-	// detailMirrors are set by EnableDetailMirrors.
+	// details and detailMirrors are set by EnableDetails.
+	details       *details.Registry
 	detailMirrors []Mirror
 }
 
