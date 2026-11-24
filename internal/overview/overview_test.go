@@ -306,7 +306,7 @@ func TestSavingsAddUpTheAccountsAndOnlyTheTargetsThatExist(t *testing.T) {
 			{ID: 2, Name: "Holiday pot", BalanceCents: 31500},
 		},
 	}
-	if !reflect.DeepEqual(got.Savings, want) {
+	if !reflect.DeepEqual(got.Savings, &want) {
 		t.Errorf("savings = %+v, want %+v", got.Savings, want)
 	}
 }
