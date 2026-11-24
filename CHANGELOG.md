@@ -7,6 +7,7 @@ User-facing changes only. Describes what users can see and do in the application
 ### Modules
 - The server can run only the features you choose with `modules` in `config.yaml` (cashflow, goals, savings, credits, investments); by default all of them run. A feature that is left out has no pages in the web app and its CSV files are not used.
 - A phone's movement that says where its money went (a savings deposit, investment contributions or a credit payment) is refused when that feature is not running; movements without such a detail are still saved.
+- The Home page and Net worth show only the features that are running: figures, lists, warnings and columns of a feature that is left out are not there.
 
 ## [v0.1.0] - 2026-11-24
 

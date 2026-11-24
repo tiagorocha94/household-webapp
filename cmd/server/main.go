@@ -141,10 +141,7 @@ func run(configPath string, dryRun bool) error {
 	detailRegistry, detailMirrors := detailModules(db, cfg.Seed.Dir, moduleSet)
 	cashflowService.EnableDetails(detailRegistry, detailMirrors...)
 	cashflowHandler := cashflowapi.New(cashflowService)
-	overviewHandler := overviewapi.New(
-		overview.New(goalsService, creditsService, investmentsService, savingsService, cashflowService),
-		overview.NewHistory(goalsService, creditsService, investmentsService, savingsService, cashflowService),
-	)
+	overviewHandler := overviewapi.New(overviewSources(moduleSet, goalsService, creditsService, investmentsService, savingsService, cashflowService))
 
 	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 	srv := server.New(logger, buildVersion(), addr, authService, authHandler, goalsHandler, creditsHandler, investmentsHandler, savingsHandler, cashflowHandler, overviewHandler,
@@ -224,6 +221,40 @@ func detailModules(db *sql.DB, seedDir string, enabled modules.Set) (*details.Re
 		mirrors = append(mirrors, csvstate.NewMirror(db, seedDir, credits.SeedModule{}))
 	}
 	return details.NewRegistry(appliers...), mirrors
+}
+
+// overviewSources gives the overview and the net worth history the modules that
+// run; the others are passed as untyped nils, which they read as absent.
+func overviewSources(enabled modules.Set, g *goalsservice.Service, c *creditsservice.Service, i *investmentsservice.Service,
+	sv *savingsservice.Service, cf *cashflowservice.Service) (*overview.Service, *overview.History) {
+	var (
+		og  overview.Goals
+		hg  overview.HistoryGoals
+		oc  overview.Credits
+		hc  overview.HistoryCredits
+		oi  overview.Investments
+		hi  overview.HistoryInvestments
+		osv overview.Savings
+		hs  overview.HistorySavings
+		ocf overview.Cashflow
+		hf  overview.HistoryCashflow
+	)
+	if enabled.Has(modules.Goals) {
+		og, hg = g, g
+	}
+	if enabled.Has(modules.Credits) {
+		oc, hc = c, c
+	}
+	if enabled.Has(modules.Investments) {
+		oi, hi = i, i
+	}
+	if enabled.Has(modules.Savings) {
+		osv, hs = sv, sv
+	}
+	if enabled.Has(modules.Cashflow) {
+		ocf, hf = cf, cf
+	}
+	return overview.New(og, oc, oi, osv, ocf), overview.NewHistory(hg, hc, hi, hs, hf)
 }
 
 // frontend returns the frontend built into the binary, or nil (the server then

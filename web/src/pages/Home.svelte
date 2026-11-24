@@ -78,23 +78,29 @@
             credit: formatCents(o.netWorth.creditCents),
           })}
         />
-        <Stat
-          label={t('shell.home.balanceInGoals')}
-          value={formatCents(o.goals.savedCents)}
-          note={t('shell.home.ofTargeted', { amount: formatCents(o.goals.targetCents) })}
-        />
-        <Stat
-          label={t('shell.home.creditOutstanding')}
-          value={formatCents(o.credit.outstandingCents)}
-          note={t('shell.home.dueEachMonth', {
-            amount: formatCents(o.credit.monthlyInstalmentCents),
-          })}
-        />
-        <Stat
-          label={t('shell.home.invested')}
-          value={formatCents(o.investments.currentValueCents)}
-        />
-        {#if o.savings.accounts > 0}
+        {#if o.goals}
+          <Stat
+            label={t('shell.home.balanceInGoals')}
+            value={formatCents(o.goals.savedCents)}
+            note={t('shell.home.ofTargeted', { amount: formatCents(o.goals.targetCents) })}
+          />
+        {/if}
+        {#if o.credit}
+          <Stat
+            label={t('shell.home.creditOutstanding')}
+            value={formatCents(o.credit.outstandingCents)}
+            note={t('shell.home.dueEachMonth', {
+              amount: formatCents(o.credit.monthlyInstalmentCents),
+            })}
+          />
+        {/if}
+        {#if o.investments}
+          <Stat
+            label={t('shell.home.invested')}
+            value={formatCents(o.investments.currentValueCents)}
+          />
+        {/if}
+        {#if o.savings && o.savings.accounts > 0}
           <Stat
             label={t('shell.nav.savings')}
             value={formatCents(o.savings.balanceCents)}
@@ -104,228 +110,239 @@
       </Stats>
 
       <div class="columns">
-        <section class="section" aria-labelledby="cashflow">
-          <h2 id="cashflow">{t('shell.home.thisMonth')}</h2>
-          {#if o.cashflow.incomeCents === 0 && o.cashflow.expenseCents === 0}
-            <p class="muted">{t('shell.home.noMovements')}</p>
-          {:else}
-            <Stats>
-              <Stat
-                label={t('shell.home.income')}
-                value={formatCents(o.cashflow.incomeCents)}
-                tone="in"
-              />
-              <Stat
-                label={t('shell.home.expenses')}
-                value={formatCents(o.cashflow.expenseCents)}
-                tone="out"
-                note={[savedNote(o.cashflow), expenseNote(o.cashflow)]
-                  .filter(Boolean)
-                  .join(' · ') || undefined}
-              />
-              <Stat
-                label={t('shell.home.saved')}
-                value={formatCents(o.cashflow.netCents)}
-                tone={netTone(o.cashflow.netCents)}
-                note={t('shell.home.ofIncome', {
-                  pct: formatSavingsRatePct(o.cashflow.savingsRatePct),
-                })}
-              />
-            </Stats>
-          {/if}
+        {#if o.cashflow}
+          <section class="section" aria-labelledby="cashflow">
+            <h2 id="cashflow">{t('shell.home.thisMonth')}</h2>
+            {#if o.cashflow.incomeCents === 0 && o.cashflow.expenseCents === 0}
+              <p class="muted">{t('shell.home.noMovements')}</p>
+            {:else}
+              <Stats>
+                <Stat
+                  label={t('shell.home.income')}
+                  value={formatCents(o.cashflow.incomeCents)}
+                  tone="in"
+                />
+                <Stat
+                  label={t('shell.home.expenses')}
+                  value={formatCents(o.cashflow.expenseCents)}
+                  tone="out"
+                  note={[savedNote(o.cashflow), expenseNote(o.cashflow)]
+                    .filter(Boolean)
+                    .join(' · ') || undefined}
+                />
+                <Stat
+                  label={t('shell.home.saved')}
+                  value={formatCents(o.cashflow.netCents)}
+                  tone={netTone(o.cashflow.netCents)}
+                  note={t('shell.home.ofIncome', {
+                    pct: formatSavingsRatePct(o.cashflow.savingsRatePct),
+                  })}
+                />
+              </Stats>
+            {/if}
 
-          {#if o.cashflow.groups.length > 0}
-            <h3>{t('shell.home.budgetGroups')}</h3>
-            <ul class="groups">
-              {#each o.cashflow.groups as g (g.name)}
-                <li>
-                  <div class="line">
-                    <span>{groupLabel(g.name)}</span>
-                    <span class="muted small">
-                      {t('shell.home.spentOfBudget', {
-                        spent: formatCents(g.spentCents),
-                        budget: formatCents(g.budgetCents),
-                      })}
-                    </span>
-                  </div>
-                  {#if g.budgetCents > 0}
-                    <ProgressBar
-                      pct={g.usedPct}
-                      over={g.usedPct > 100}
-                      label={t('shell.home.budgetSpentLabel', {
-                        name: groupLabel(g.name),
-                        pct: formatPercent(g.usedPct),
-                      })}
-                    />
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-          <p class="more"><a href={href('/cashflow')}>{t('shell.nav.cashflow')}</a></p>
-        </section>
+            {#if o.cashflow.groups.length > 0}
+              <h3>{t('shell.home.budgetGroups')}</h3>
+              <ul class="groups">
+                {#each o.cashflow.groups as g (g.name)}
+                  <li>
+                    <div class="line">
+                      <span>{groupLabel(g.name)}</span>
+                      <span class="muted small">
+                        {t('shell.home.spentOfBudget', {
+                          spent: formatCents(g.spentCents),
+                          budget: formatCents(g.budgetCents),
+                        })}
+                      </span>
+                    </div>
+                    {#if g.budgetCents > 0}
+                      <ProgressBar
+                        pct={g.usedPct}
+                        over={g.usedPct > 100}
+                        label={t('shell.home.budgetSpentLabel', {
+                          name: groupLabel(g.name),
+                          pct: formatPercent(g.usedPct),
+                        })}
+                      />
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+            <p class="more"><a href={href('/cashflow')}>{t('shell.nav.cashflow')}</a></p>
+          </section>
+        {/if}
 
-        <section class="section" aria-labelledby="goals">
-          <h2 id="goals">{t('shell.nav.goals')}</h2>
-          {#if o.activeGoals.length === 0}
-            <p class="muted">{t('shell.home.noActiveGoals')}</p>
-          {:else}
-            <div class="scroll">
-              <table class="ledger">
-                <thead>
-                  <tr>
-                    <SortHeader
-                      label={t('shell.home.colGoal')}
-                      column="name"
-                      sort={goalSort}
-                      onsort={onGoalSort}
-                    />
-                    <SortHeader
-                      label={t('shell.home.colEnds')}
-                      column="ends"
-                      sort={goalSort}
-                      onsort={onGoalSort}
-                    />
-                    <SortHeader
-                      label={t('shell.home.saved')}
-                      column="saved"
-                      sort={goalSort}
-                      onsort={onGoalSort}
-                      numeric
-                    />
-                    <SortHeader
-                      label={t('shell.home.colProgress')}
-                      column="progress"
-                      sort={goalSort}
-                      onsort={onGoalSort}
-                    />
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each sortRows(o.activeGoals, goalSort, goalValues) as goal (goal.id)}
+        {#if o.goals}
+          <section class="section" aria-labelledby="goals">
+            <h2 id="goals">{t('shell.nav.goals')}</h2>
+            {#if o.activeGoals.length === 0}
+              <p class="muted">{t('shell.home.noActiveGoals')}</p>
+            {:else}
+              <div class="scroll">
+                <table class="ledger">
+                  <thead>
                     <tr>
-                      <td>
-                        <a href={href(`/goals/${goal.id}`)}>{goal.name}</a>
-                        {#if goal.behind}<Pill text={t('shell.home.behindPlan')} tone="out" />{/if}
-                      </td>
-                      <td class="muted nowrap">{formatMonth(goal.endMonth)}</td>
-                      <td class="num">
-                        {formatCents(goal.savedCents)}
-                        <span class="muted small"
-                          >{t('shell.home.ofAmount', {
-                            amount: formatCents(goal.targetCents),
-                          })}</span
-                        >
-                      </td>
-                      <td
-                        ><ProgressBar
-                          pct={goal.progressPct}
-                          label={t('shell.home.progressOf', { name: goal.name })}
-                        /></td
-                      >
+                      <SortHeader
+                        label={t('shell.home.colGoal')}
+                        column="name"
+                        sort={goalSort}
+                        onsort={onGoalSort}
+                      />
+                      <SortHeader
+                        label={t('shell.home.colEnds')}
+                        column="ends"
+                        sort={goalSort}
+                        onsort={onGoalSort}
+                      />
+                      <SortHeader
+                        label={t('shell.home.saved')}
+                        column="saved"
+                        sort={goalSort}
+                        onsort={onGoalSort}
+                        numeric
+                      />
+                      <SortHeader
+                        label={t('shell.home.colProgress')}
+                        column="progress"
+                        sort={goalSort}
+                        onsort={onGoalSort}
+                      />
                     </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
-          <p class="more"><a href={href('/goals')}>{t('shell.home.allGoals')}</a></p>
-        </section>
+                  </thead>
+                  <tbody>
+                    {#each sortRows(o.activeGoals, goalSort, goalValues) as goal (goal.id)}
+                      <tr>
+                        <td>
+                          <a href={href(`/goals/${goal.id}`)}>{goal.name}</a>
+                          {#if goal.behind}<Pill
+                              text={t('shell.home.behindPlan')}
+                              tone="out"
+                            />{/if}
+                        </td>
+                        <td class="muted nowrap">{formatMonth(goal.endMonth)}</td>
+                        <td class="num">
+                          {formatCents(goal.savedCents)}
+                          <span class="muted small"
+                            >{t('shell.home.ofAmount', {
+                              amount: formatCents(goal.targetCents),
+                            })}</span
+                          >
+                        </td>
+                        <td
+                          ><ProgressBar
+                            pct={goal.progressPct}
+                            label={t('shell.home.progressOf', { name: goal.name })}
+                          /></td
+                        >
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/if}
+            <p class="more"><a href={href('/goals')}>{t('shell.home.allGoals')}</a></p>
+          </section>
+        {/if}
       </div>
 
       <div class="columns">
-        <section class="section" aria-labelledby="credits">
-          <h2 id="credits">{t('shell.nav.credits')}</h2>
-          {#if o.contracts.length === 0}
-            <p class="muted">{t('shell.home.noContracts')}</p>
-          {:else}
-            <div class="scroll">
-              <table class="ledger">
-                <thead>
-                  <tr>
-                    <SortHeader
-                      label={t('shell.home.colContract')}
-                      column="name"
-                      sort={contractSort}
-                      onsort={onContractSort}
-                    />
-                    <SortHeader
-                      label={t('shell.home.colOutstanding')}
-                      column="outstanding"
-                      sort={contractSort}
-                      onsort={onContractSort}
-                      numeric
-                    />
-                    <SortHeader
-                      label={t('shell.home.colInstalment')}
-                      column="instalment"
-                      sort={contractSort}
-                      onsort={onContractSort}
-                      numeric
-                    />
-                    <SortHeader
-                      label={t('shell.home.colNext')}
-                      column="next"
-                      sort={contractSort}
-                      onsort={onContractSort}
-                    />
-                  </tr>
-                </thead>
-                <tbody>
-                  {#each sortRows(o.contracts, contractSort, contractValues) as c (c.id)}
+        {#if o.credit}
+          <section class="section" aria-labelledby="credits">
+            <h2 id="credits">{t('shell.nav.credits')}</h2>
+            {#if o.contracts.length === 0}
+              <p class="muted">{t('shell.home.noContracts')}</p>
+            {:else}
+              <div class="scroll">
+                <table class="ledger">
+                  <thead>
                     <tr>
-                      <td>
-                        <a href={href(`/credits/${c.id}`)}>{c.name}</a>
-                        {#if c.endMonth}
-                          <span class="muted small"
-                            >{t('shell.home.endsIn', { month: formatMonth(c.endMonth) })}</span
-                          >
-                        {/if}
-                      </td>
-                      <td class="num">{formatCents(c.outstandingCents)}</td>
-                      <td class="num"
-                        >{c.instalmentCents > 0 ? formatCents(c.instalmentCents) : '—'}</td
-                      >
-                      <td class="muted nowrap">{nextInstalment(c)}</td>
+                      <SortHeader
+                        label={t('shell.home.colContract')}
+                        column="name"
+                        sort={contractSort}
+                        onsort={onContractSort}
+                      />
+                      <SortHeader
+                        label={t('shell.home.colOutstanding')}
+                        column="outstanding"
+                        sort={contractSort}
+                        onsort={onContractSort}
+                        numeric
+                      />
+                      <SortHeader
+                        label={t('shell.home.colInstalment')}
+                        column="instalment"
+                        sort={contractSort}
+                        onsort={onContractSort}
+                        numeric
+                      />
+                      <SortHeader
+                        label={t('shell.home.colNext')}
+                        column="next"
+                        sort={contractSort}
+                        onsort={onContractSort}
+                      />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each sortRows(o.contracts, contractSort, contractValues) as c (c.id)}
+                      <tr>
+                        <td>
+                          <a href={href(`/credits/${c.id}`)}>{c.name}</a>
+                          {#if c.endMonth}
+                            <span class="muted small"
+                              >{t('shell.home.endsIn', { month: formatMonth(c.endMonth) })}</span
+                            >
+                          {/if}
+                        </td>
+                        <td class="num">{formatCents(c.outstandingCents)}</td>
+                        <td class="num"
+                          >{c.instalmentCents > 0 ? formatCents(c.instalmentCents) : '—'}</td
+                        >
+                        <td class="muted nowrap">{nextInstalment(c)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+              <p class="muted small">
+                {t('shell.home.instalmentNote')}
+              </p>
+            {/if}
+            <p class="more"><a href={href('/credits')}>{t('shell.home.allCredits')}</a></p>
+          </section>
+        {/if}
+
+        {#if o.investments}
+          <section class="section" aria-labelledby="investments">
+            <h2 id="investments">{t('shell.nav.investments')}</h2>
+            {#if o.holdings.length === 0}
+              <p class="muted">{t('shell.home.noInvestments')}</p>
+            {:else}
+              <table class="ledger">
+                <tbody>
+                  {#each o.holdings as h (h.id)}
+                    <tr>
+                      <td><a href={href(`/investments/entities/${h.id}`)}>{h.name}</a></td>
+                      <td class="num">{formatCents(h.valueCents)}</td>
                     </tr>
                   {/each}
+                  <tr>
+                    <td><strong>{t('shell.common.total')}</strong></td>
+                    <td class="num"
+                      ><strong>{formatCents(o.investments.currentValueCents)}</strong></td
+                    >
+                  </tr>
                 </tbody>
               </table>
-            </div>
-            <p class="muted small">
-              {t('shell.home.instalmentNote')}
-            </p>
-          {/if}
-          <p class="more"><a href={href('/credits')}>{t('shell.home.allCredits')}</a></p>
-        </section>
-
-        <section class="section" aria-labelledby="investments">
-          <h2 id="investments">{t('shell.nav.investments')}</h2>
-          {#if o.holdings.length === 0}
-            <p class="muted">{t('shell.home.noInvestments')}</p>
-          {:else}
-            <table class="ledger">
-              <tbody>
-                {#each o.holdings as h (h.id)}
-                  <tr>
-                    <td><a href={href(`/investments/entities/${h.id}`)}>{h.name}</a></td>
-                    <td class="num">{formatCents(h.valueCents)}</td>
-                  </tr>
-                {/each}
-                <tr>
-                  <td><strong>{t('shell.common.total')}</strong></td>
-                  <td class="num"
-                    ><strong>{formatCents(o.investments.currentValueCents)}</strong></td
-                  >
-                </tr>
-              </tbody>
-            </table>
-          {/if}
-          <p class="more"><a href={href('/investments')}>{t('shell.home.allInvestments')}</a></p>
-        </section>
+            {/if}
+            <p class="more"><a href={href('/investments')}>{t('shell.home.allInvestments')}</a></p>
+          </section>
+        {/if}
       </div>
 
-      {#if o.savings.accounts > 0}
+      {#if o.savings && o.savings.accounts > 0}
         <div class="columns">
           <section class="section" aria-labelledby="savings">
             <h2 id="savings">{t('shell.nav.savings')}</h2>

@@ -11,6 +11,18 @@ drift from the modules it summarises. It needs a web session; device tokens
 cannot read it ([ADR 012](../../decisions/012-devices-read-goals.md) covers
 only the goals routes).
 
+## When a module does not run
+
+The overview is the one place that reads every module, so it is built to work
+with any subset (see `modules` in the [README](../../../README.md#configuration)).
+A module that does not run is not read: its section of the response
+(`goals`, `credit`, `investments`, `savings`, `cashflow`) is left out, its rows
+and warnings are missing, and net worth adds up what is left. The checks that
+compare cashflow with another module (the `unassigned_` warnings) need both
+modules to run. The net worth history takes its months from cashflow, so
+without it the list is empty. The web Home and Net worth pages show only what
+the response holds.
+
 Net worth month by month is a second read, `GET /api/v1/overview/net-worth`. For
 every month that has cashflow it returns the savings, investments, goals, cash
 and credit owed at the end of the month, worked out from the modules' typed data

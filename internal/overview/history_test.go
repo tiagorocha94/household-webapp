@@ -137,3 +137,32 @@ func TestNetWorthHistoryWithoutCashBalancesLeavesCashOut(t *testing.T) {
 		t.Errorf("NetWorth() = %+v, want no cash in either month", got)
 	}
 }
+
+func TestNetWorthHistoryNeedsCashflowForItsMonths(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewHistory(historyGoals{}, historyCredits{}, historyInvestments{}, historySavings{}, nil).NetWorth()
+	if err != nil {
+		t.Fatalf("NetWorth: %v", err)
+	}
+	if got == nil || len(got) != 0 {
+		t.Errorf("NetWorth() = %#v, want an empty list", got)
+	}
+}
+
+func TestNetWorthHistoryLeavesOutTheModulesThatDoNotRun(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewHistory(nil, nil, nil, nil, historyCashflow{}).NetWorth()
+	if err != nil {
+		t.Fatalf("NetWorth: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("NetWorth() = %+v, want the two months with cashflow", got)
+	}
+	for _, m := range got {
+		if m.SavingsCents != 0 || m.InvestmentsCents != 0 || m.GoalsCents != 0 || m.CreditCents != 0 || m.AssetsCents != m.CashCents {
+			t.Errorf("month %s = %+v, want only cash", m.Month, m)
+		}
+	}
+}

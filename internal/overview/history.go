@@ -73,7 +73,8 @@ type History struct {
 	cashflow    HistoryCashflow
 }
 
-// NewHistory creates a History reading from the given modules.
+// NewHistory creates a History reading from the given modules. A module that
+// does not run is passed as an untyped nil and counts as nothing.
 func NewHistory(g HistoryGoals, c HistoryCredits, i HistoryInvestments, s HistorySavings, cf HistoryCashflow) *History {
 	return &History{goals: g, credits: c, investments: i, savings: s, cashflow: cf}
 }
@@ -82,7 +83,12 @@ func NewHistory(g HistoryGoals, c HistoryCredits, i HistoryInvestments, s Histor
 // figure is the one at the end of that month: a savings account or an
 // instrument without a snapshot that early keeps the last earlier one, and
 // cash comes from the typed bank balances (a person with none is left out).
+// Without the cashflow module there is no month, so the list is empty.
 func (h *History) NetWorth() ([]NetWorthMonth, error) {
+	// The months are the ones that have cashflow, so without it there are none.
+	if h.cashflow == nil {
+		return []NetWorthMonth{}, nil
+	}
 	summaries, err := h.cashflow.ListMonths()
 	if err != nil {
 		return nil, fmt.Errorf("list cashflow months: %w", err)
@@ -137,6 +143,9 @@ func (h *History) NetWorth() ([]NetWorthMonth, error) {
 // savingsSeries returns the total savings balance at the end of a month: each
 // account as it was with only the movements and snapshots up to that month.
 func (h *History) savingsSeries() (func(string) money.Cents, error) {
+	if h.savings == nil {
+		return func(string) money.Cents { return 0 }, nil
+	}
 	accounts, err := h.savings.ListAccounts()
 	if err != nil {
 		return nil, fmt.Errorf("list savings accounts: %w", err)
@@ -183,6 +192,9 @@ func (h *History) savingsSeries() (func(string) money.Cents, error) {
 // month: the latest snapshot of each up to that month, or nothing before the
 // first one.
 func (h *History) investmentsSeries() (func(string) money.Cents, error) {
+	if h.investments == nil {
+		return func(string) money.Cents { return 0 }, nil
+	}
 	entities, err := h.investments.ListEntities()
 	if err != nil {
 		return nil, fmt.Errorf("list investment entities: %w", err)
@@ -226,6 +238,9 @@ func (h *History) investmentsSeries() (func(string) money.Cents, error) {
 // month: allocations less expenses and releases, plus covers, up to that month, as the goal
 // summary adds them up.
 func (h *History) goalsSeries() (func(string) money.Cents, error) {
+	if h.goals == nil {
+		return func(string) money.Cents { return 0 }, nil
+	}
 	accounts, err := h.goals.ListAccounts()
 	if err != nil {
 		return nil, fmt.Errorf("list goal accounts: %w", err)
@@ -269,6 +284,9 @@ func (h *History) goalsSeries() (func(string) money.Cents, error) {
 // original principal of each contract that had started, less the principal paid
 // up to that month, never below zero.
 func (h *History) creditsSeries() (func(string) money.Cents, error) {
+	if h.credits == nil {
+		return func(string) money.Cents { return 0 }, nil
+	}
 	contracts, err := h.credits.ListContracts()
 	if err != nil {
 		return nil, fmt.Errorf("list credit contracts: %w", err)

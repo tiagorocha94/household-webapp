@@ -306,7 +306,7 @@ func TestSavingsAddUpTheAccountsAndOnlyTheTargetsThatExist(t *testing.T) {
 			{ID: 2, Name: "Holiday pot", BalanceCents: 31500},
 		},
 	}
-	if !reflect.DeepEqual(got.Savings, want) {
+	if !reflect.DeepEqual(got.Savings, &want) {
 		t.Errorf("savings = %+v, want %+v", got.Savings, want)
 	}
 }
@@ -477,5 +477,60 @@ func TestNetWorthAddsEachPersonsCash(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got.NetWorth, want) {
 		t.Errorf("net worth = %+v, want %+v", got.NetWorth, want)
+	}
+}
+
+func TestGetWithOnlyCashflowLeavesTheOtherModulesOut(t *testing.T) {
+	t.Parallel()
+
+	cf := fakeCashflow{
+		details: map[string]*cashflow.MonthDetail{"2026-11": {
+			MonthSummary: cashflow.MonthSummary{Month: "2026-11", IncomeCents: 100000, ExpenseCents: 40000, NetCents: 60000},
+		}},
+		// Money put aside in a savings category: nothing to compare it with
+		// when the savings module does not run, so there is no warning.
+		byRole: map[string]map[string]money.Cents{cashflow.RoleSavings: {"2026-11": 25000}},
+		cash:   []cashflow.CashBalance{{User: "alice", Month: "2026-11", BalanceCents: 7000}},
+	}
+	s := New(nil, nil, nil, nil, cf)
+	s.now = func() time.Time { return time.Date(2026, time.November, 9, 12, 0, 0, 0, time.Local) }
+	got, err := s.Get()
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.Goals != nil || got.Credit != nil || got.Investments != nil || got.Savings != nil {
+		t.Errorf("sections of modules that do not run are present: %+v", got)
+	}
+	if got.Cashflow == nil || got.Cashflow.IncomeCents != 100000 {
+		t.Errorf("cashflow = %+v, want the month's figures", got.Cashflow)
+	}
+	if len(got.Attention) != 0 {
+		t.Errorf("attention = %+v, want none", got.Attention)
+	}
+	if got.NetWorth.CashCents != 7000 || got.NetWorth.NetCents != 7000 {
+		t.Errorf("net worth = %+v, want just the cash", got.NetWorth)
+	}
+}
+
+func TestGetWithoutCashflowStillShowsTheOtherModules(t *testing.T) {
+	t.Parallel()
+
+	g := fakeGoals{
+		accounts:  []goals.Account{{ID: 1, Name: "Joint"}},
+		summaries: map[int64][]goals.GoalSummary{1: {goalSummary(1, "Holiday", "2027-06", 100000, 40000, 40000, 12, 6)}},
+	}
+	s := New(g, nil, nil, nil, nil)
+	got, err := s.Get()
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.Cashflow != nil || got.Credit != nil || got.Savings != nil || got.Investments != nil {
+		t.Errorf("sections of modules that do not run are present: %+v", got)
+	}
+	if got.Goals == nil || got.Goals.SavedCents != 40000 || len(got.ActiveGoals) != 1 {
+		t.Errorf("goals = %+v, active = %+v", got.Goals, got.ActiveGoals)
+	}
+	if got.NetWorth.AssetsCents != 40000 || got.NetWorth.CashByUser != nil {
+		t.Errorf("net worth = %+v, want the goal money and no cash", got.NetWorth)
 	}
 }

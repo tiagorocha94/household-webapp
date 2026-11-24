@@ -160,14 +160,14 @@ export function nextInstalment(contract: Pick<OverviewContract, 'nextInstalmentM
   return contract.nextInstalmentMonth ? formatMonth(contract.nextInstalmentMonth) : '—';
 }
 
-/** Whether there is nothing at all to show yet, so the page explains where data comes from. */
+/** Whether there is nothing at all to show yet (a module that does not run has nothing), so the page explains where data comes from. */
 export function isEmpty(o: Overview): boolean {
   return (
     o.activeGoals.length === 0 &&
     o.contracts.length === 0 &&
     o.holdings.length === 0 &&
-    o.savings.accounts === 0 &&
-    o.cashflow.incomeCents === 0 &&
-    o.cashflow.expenseCents === 0
+    (o.savings?.accounts ?? 0) === 0 &&
+    (o.cashflow?.incomeCents ?? 0) === 0 &&
+    (o.cashflow?.expenseCents ?? 0) === 0
   );
 }

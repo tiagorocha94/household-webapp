@@ -1,6 +1,9 @@
 // Package overview composes the figures of the Home page from the other
 // modules. It owns no tables and stores nothing: every figure is read from the
-// goals, credits, investments and cashflow services on each request.
+// goals, credits, investments, savings and cashflow services on each request.
+// It is the one place that knows all of them, like the phone app, and each
+// module is optional: a module that does not run is passed as nil, and its
+// figures, rows and warnings are left out.
 package overview
 
 import (
@@ -96,14 +99,16 @@ type Cashflow interface {
 // Overview is everything the Home page shows.
 type Overview struct {
 	// Month is the current month as YYYY-MM.
-	Month       string
-	Attention   []Attention
-	Goals       GoalsFigures
-	Credit      CreditFigures
-	Investments InvestmentFigures
-	Savings     SavingsFigures
+	Month     string
+	Attention []Attention
+	// Goals, Credit, Investments, Savings and Cashflow are nil when their
+	// module does not run.
+	Goals       *GoalsFigures
+	Credit      *CreditFigures
+	Investments *InvestmentFigures
+	Savings     *SavingsFigures
 	NetWorth    NetWorthFigures
-	Cashflow    CashflowFigures
+	Cashflow    *CashflowFigures
 	// ActiveGoals lists every active goal, the soonest end first.
 	ActiveGoals []GoalRow
 	// Contracts lists every active credit contract.
@@ -270,7 +275,9 @@ type Service struct {
 	now         func() time.Time
 }
 
-// New creates a Service reading from the given module services.
+// New creates a Service reading from the given module services. A module that
+// does not run is passed as an untyped nil, never as a nil pointer in the
+// interface.
 func New(g Goals, c Credits, i Investments, sv Savings, cf Cashflow) *Service {
 	return &Service{goals: g, credits: c, investments: i, savings: sv, cashflow: cf, now: time.Now}
 }
@@ -335,17 +342,28 @@ func (s *Service) creditPaymentsByMonth() (map[string]money.Cents, error) {
 // to a category has no expenses, so it is never warned about. A month where the
 // typed amounts are equal or higher is fine.
 func (s *Service) addUnassigned(out *Overview) error {
-	checks := []struct {
+	if s.cashflow == nil {
+		return nil
+	}
+	type check struct {
 		kind     string
 		role     string
 		recorded func() (map[string]money.Cents, error)
 		// presence compares only whether anything was recorded, not how much.
 		presence bool
-	}{
-		{AttentionUnassignedSavings, cashflow.RoleSavings, s.savings.DepositsByMonth, false},
-		{AttentionUnassignedInvestments, cashflow.RoleInvestments, s.investments.ContributionsByMonth, false},
-		{AttentionUnassignedGoals, cashflow.RoleGoals, s.goals.DepositsByMonth, false},
-		{AttentionUnassignedCredits, cashflow.RoleCredits, s.creditPaymentsByMonth, true},
+	}
+	var checks []check
+	if s.savings != nil {
+		checks = append(checks, check{AttentionUnassignedSavings, cashflow.RoleSavings, s.savings.DepositsByMonth, false})
+	}
+	if s.investments != nil {
+		checks = append(checks, check{AttentionUnassignedInvestments, cashflow.RoleInvestments, s.investments.ContributionsByMonth, false})
+	}
+	if s.goals != nil {
+		checks = append(checks, check{AttentionUnassignedGoals, cashflow.RoleGoals, s.goals.DepositsByMonth, false})
+	}
+	if s.credits != nil {
+		checks = append(checks, check{AttentionUnassignedCredits, cashflow.RoleCredits, s.creditPaymentsByMonth, true})
 	}
 	for _, c := range checks {
 		expenses, err := s.cashflow.ExpensesByRole(c.role)
@@ -376,21 +394,39 @@ func (s *Service) addUnassigned(out *Overview) error {
 // addNetWorth totals what the household has and owes. It runs after the module
 // figures are filled in.
 func (s *Service) addNetWorth(out *Overview) error {
-	balances, err := s.cashflow.CashBalances([]string{out.Month})
-	if err != nil {
-		return fmt.Errorf("cash balances: %w", err)
+	if s.cashflow != nil {
+		balances, err := s.cashflow.CashBalances([]string{out.Month})
+		if err != nil {
+			return fmt.Errorf("cash balances: %w", err)
+		}
+		for _, b := range balances {
+			out.NetWorth.CashByUser = append(out.NetWorth.CashByUser, UserCash{User: b.User, BalanceCents: b.BalanceCents})
+			out.NetWorth.CashCents += b.BalanceCents
+		}
 	}
-	for _, b := range balances {
-		out.NetWorth.CashByUser = append(out.NetWorth.CashByUser, UserCash{User: b.User, BalanceCents: b.BalanceCents})
-		out.NetWorth.CashCents += b.BalanceCents
+	assets := out.NetWorth.CashCents
+	if out.Savings != nil {
+		assets += out.Savings.BalanceCents
 	}
-	out.NetWorth.AssetsCents = out.Savings.BalanceCents + out.Investments.CurrentValueCents + out.Goals.SavedCents + out.NetWorth.CashCents
-	out.NetWorth.CreditCents = out.Credit.OutstandingCents
+	if out.Investments != nil {
+		assets += out.Investments.CurrentValueCents
+	}
+	if out.Goals != nil {
+		assets += out.Goals.SavedCents
+	}
+	out.NetWorth.AssetsCents = assets
+	if out.Credit != nil {
+		out.NetWorth.CreditCents = out.Credit.OutstandingCents
+	}
 	out.NetWorth.NetCents = out.NetWorth.AssetsCents - out.NetWorth.CreditCents
 	return nil
 }
 
 func (s *Service) addGoals(out *Overview) error {
+	if s.goals == nil {
+		return nil
+	}
+	out.Goals = &GoalsFigures{}
 	accounts, err := s.goals.ListAccounts()
 	if err != nil {
 		return fmt.Errorf("list goal accounts: %w", err)
@@ -447,6 +483,10 @@ func isBehind(g goals.GoalSummary) bool {
 }
 
 func (s *Service) addCredits(out *Overview, now time.Time) error {
+	if s.credits == nil {
+		return nil
+	}
+	out.Credit = &CreditFigures{}
 	contracts, err := s.credits.ListContracts()
 	if err != nil {
 		return fmt.Errorf("list credit contracts: %w", err)
@@ -509,6 +549,10 @@ func lastRegular(payments []credits.Payment) (credits.Payment, bool) {
 }
 
 func (s *Service) addInvestments(out *Overview) error {
+	if s.investments == nil {
+		return nil
+	}
+	out.Investments = &InvestmentFigures{}
 	entities, err := s.investments.ListEntities()
 	if err != nil {
 		return fmt.Errorf("list investment entities: %w", err)
@@ -521,6 +565,10 @@ func (s *Service) addInvestments(out *Overview) error {
 }
 
 func (s *Service) addSavings(out *Overview) error {
+	if s.savings == nil {
+		return nil
+	}
+	out.Savings = &SavingsFigures{}
 	accounts, err := s.savings.ListAccounts()
 	if err != nil {
 		return fmt.Errorf("list savings accounts: %w", err)
@@ -546,7 +594,10 @@ func (s *Service) addSavings(out *Overview) error {
 }
 
 func (s *Service) addCashflow(out *Overview, now time.Time) error {
-	out.Cashflow = CashflowFigures{Month: out.Month, Groups: []GroupRow{}}
+	if s.cashflow == nil {
+		return nil
+	}
+	out.Cashflow = &CashflowFigures{Month: out.Month, Groups: []GroupRow{}}
 
 	detail, err := s.cashflow.GetMonth(out.Month)
 	switch {
