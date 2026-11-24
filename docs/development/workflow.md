@@ -30,7 +30,17 @@ the design in [architecture](../architecture/overview.md).
 
 - Conventional format `type: description` (feat, fix, chore, docs, refactor,
   test, style, perf, ci, build).
-- Each commit is atomic and compiles on its own. Work on `main`.
+- Each commit is atomic and compiles on its own.
+
+## Pull requests
+
+`main` only changes through a pull request, which must pass the CI checks and is
+squash merged, so the title of the pull request becomes the commit on `main` and
+follows the conventional format above. Branches are named `type/short-topic`
+(for example `feat/optional-modules`) and are deleted after the merge. Keep a
+pull request to one unit of work with its tests and docs. Release tags
+(`vX.Y.Z`) are created by the maintainer on `main` after the release steps in
+[releasing.md](releasing.md).
 
 ## Adding a feature module
 
