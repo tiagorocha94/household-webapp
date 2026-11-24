@@ -5,6 +5,8 @@
   import { matchRoute, type Route } from './lib/router';
   import { isMonth } from './lib/month';
   import { isMonthView } from './lib/cashflow';
+  import { isEnabled, moduleOfRoute } from './lib/modules';
+  import { serverModules, setServerModules } from './lib/modules.svelte';
   import { loadCollapsed, saveCollapsed } from './lib/nav';
   import SideNav from './components/SideNav.svelte';
   import TopBar from './components/TopBar.svelte';
@@ -66,6 +68,8 @@
     drawerOpen = false;
   });
   const match = $derived(matchRoute(router.path, routes));
+  // A page of a module this server does not run is not found.
+  const moduleOff = $derived(!isEnabled(serverModules.enabled, moduleOfRoute(match?.name)));
 
   // The count on the bell is read again whenever the person goes to another page.
   $effect(() => {
@@ -74,11 +78,16 @@
   });
 
   onMount(async () => {
-    await restoreSession();
-    api
+    // Asked at the same time as the session, so the menu is right when it first shows.
+    const info = api
       .info()
-      .then((info) => (version = info.version))
+      .then((info) => {
+        version = info.version;
+        setServerModules(info.modules);
+      })
       .catch(() => {});
+    await restoreSession();
+    await info;
   });
 
   // Signed-in people never see the login page, and everyone else sees only that.
@@ -117,7 +126,9 @@
       />
       <main class="page">
         {#key router.path}
-          {#if match?.name === 'home'}
+          {#if moduleOff}
+            <NotFound />
+          {:else if match?.name === 'home'}
             <Home />
           {:else if match?.name === 'net-worth'}
             <NetWorth />

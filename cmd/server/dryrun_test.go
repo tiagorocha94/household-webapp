@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/tiagorocha94/household-webapp/internal/database"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/seed"
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
@@ -32,7 +33,7 @@ func TestPreviewStartupReportsChangesAndWritesNothing(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "household.db")
 
 	var out bytes.Buffer
-	if err := previewStartup(&out, dbPath, dir, testutil.Logger()); err != nil {
+	if err := previewStartup(&out, dbPath, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("previewStartup() error = %v", err)
 	}
 
@@ -75,12 +76,12 @@ func TestPreviewStartupOnAnUpToDateDatabaseChangesNothing(t *testing.T) {
 		t.Fatalf("database.Open() error = %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("prepareData() error = %v", err)
 	}
 
 	var out bytes.Buffer
-	if err := previewStartup(&out, dbPath, dir, testutil.Logger()); err != nil {
+	if err := previewStartup(&out, dbPath, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("previewStartup() error = %v", err)
 	}
 	if want := "Nothing would change."; !strings.Contains(out.String(), want) {
@@ -98,13 +99,13 @@ func TestPreviewStartupSeesAChangedCSVFile(t *testing.T) {
 		t.Fatalf("database.Open() error = %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("prepareData() error = %v", err)
 	}
 
 	writeFile(t, filepath.Join(dir, "goal_accounts.csv"), "name,monthly_deposit_cents\nHousehold,50000\n")
 	var out bytes.Buffer
-	if err := previewStartup(&out, dbPath, dir, testutil.Logger()); err != nil {
+	if err := previewStartup(&out, dbPath, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("previewStartup() error = %v", err)
 	}
 	report := out.String()

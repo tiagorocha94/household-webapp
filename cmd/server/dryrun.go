@@ -15,6 +15,7 @@ import (
 
 	"github.com/tiagorocha94/household-webapp/internal/database"
 	"github.com/tiagorocha94/household-webapp/internal/database/migrations"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/seed"
 )
 
@@ -41,7 +42,7 @@ type startupPreview struct {
 // migrations, the rows the import and sync would add or remove, and the CSV
 // files the export would rewrite. Nothing is changed. The work runs on a copy
 // of the database in a temporary directory, and the CSV files are only read.
-func previewStartup(w io.Writer, dbPath, seedDir string, logger *slog.Logger) error {
+func previewStartup(w io.Writer, dbPath, seedDir string, enabled modules.Set, logger *slog.Logger) error {
 	tmp, err := os.MkdirTemp("", "household-dry-run-")
 	if err != nil {
 		return fmt.Errorf("create dry-run directory: %w", err)
@@ -52,7 +53,7 @@ func previewStartup(w io.Writer, dbPath, seedDir string, logger *slog.Logger) er
 		}
 	}()
 
-	preview, err := runPreview(filepath.Join(tmp, "preview.db"), filepath.Join(tmp, "export"), dbPath, seedDir, logger)
+	preview, err := runPreview(filepath.Join(tmp, "preview.db"), filepath.Join(tmp, "export"), dbPath, seedDir, enabled, logger)
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func previewStartup(w io.Writer, dbPath, seedDir string, logger *slog.Logger) er
 	return err
 }
 
-func runPreview(copyPath, exportDir, dbPath, seedDir string, logger *slog.Logger) (*startupPreview, error) {
+func runPreview(copyPath, exportDir, dbPath, seedDir string, enabled modules.Set, logger *slog.Logger) (*startupPreview, error) {
 	if err := copyDatabase(dbPath, copyPath); err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func runPreview(copyPath, exportDir, dbPath, seedDir string, logger *slog.Logger
 	if err != nil {
 		return nil, fmt.Errorf("capture data before import: %w", err)
 	}
-	runner := newSeedRunner(logger)
+	runner := newSeedRunner(logger, enabled)
 	if err := runner.Import(db, seedDir); err != nil {
 		return nil, fmt.Errorf("import seed data: %w", err)
 	}

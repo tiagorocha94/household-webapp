@@ -11,6 +11,8 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 )
 
 // Config holds all application configuration sections.
@@ -19,6 +21,9 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Seed     SeedConfig     `yaml:"seed"`
 	Log      LogConfig      `yaml:"log"`
+	// Modules lists the feature modules to run: cashflow, goals, savings,
+	// credits and investments. Leave it out to run all of them.
+	Modules []string `yaml:"modules"`
 }
 
 // ServerConfig holds HTTP server settings.
@@ -51,6 +56,15 @@ type LogConfig struct {
 	Level string `yaml:"level"`
 }
 
+// ModuleSet returns the modules to run. Load has already checked the names.
+func (c *Config) ModuleSet() modules.Set {
+	set, err := modules.NewSet(c.Modules)
+	if err != nil {
+		return modules.Set{}
+	}
+	return set
+}
+
 // Load reads the YAML configuration file at the given path and returns
 // a parsed Config. Missing optional values are filled with sensible defaults,
 // and an unknown key is an error, so a typo cannot silently do nothing.
@@ -77,6 +91,9 @@ func Load(path string) (*Config, error) {
 }
 
 func validate(cfg *Config) error {
+	if _, err := modules.NewSet(cfg.Modules); err != nil {
+		return fmt.Errorf("modules: %w", err)
+	}
 	if raw := cfg.Server.PublicURL; raw != "" {
 		u, err := url.Parse(raw)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {

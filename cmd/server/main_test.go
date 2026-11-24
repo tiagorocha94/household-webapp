@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/tiagorocha94/household-webapp/internal/database"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
 
@@ -32,7 +33,7 @@ func TestPrepareDataIsRepeatableAndExports(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "goal_account_goals.csv"),
 		"account,name,target_cents,start_month,end_month,status\nHousehold,Trip,10000,2020-01,2020-04,active\n")
 
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("first prepareData() error = %v", err)
 	}
 
@@ -55,7 +56,7 @@ func TestPrepareDataIsRepeatableAndExports(t *testing.T) {
 	}
 
 	// Running again against the exported files changes nothing.
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("second prepareData() error = %v", err)
 	}
 	again, err := os.ReadFile(filepath.Join(dir, "goal_account_movements.csv"))
@@ -80,7 +81,7 @@ func TestPrepareDataStopsBeforeExportOnBadCSV(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "users.csv"), "wrong,header\nowner,"+testutil.PasswordHash+"\n")
 	writeFile(t, filepath.Join(dir, "goal_accounts.csv"), "name,monthly_deposit_cents\nKeep,36600\n")
 
-	if err := prepareData(db, dir, testutil.Logger()); err == nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err == nil {
 		t.Fatal("prepareData() succeeded, want header error")
 	}
 	got, err := os.ReadFile(filepath.Join(dir, "goal_accounts.csv"))
@@ -109,7 +110,7 @@ func TestImportRejectsObsoleteMoneyHeaders(t *testing.T) {
 
 			dir := t.TempDir()
 			writeFile(t, filepath.Join(dir, tt.file), strings.Join(tt.header, ",")+"\n")
-			err := newSeedRunner(testutil.Logger()).Import(testutil.NewDB(t), dir)
+			err := newSeedRunner(testutil.Logger(), modules.Set{}).Import(testutil.NewDB(t), dir)
 			if err == nil || !strings.Contains(err.Error(), "header") {
 				t.Fatalf("Import() error = %v, want header mismatch", err)
 			}

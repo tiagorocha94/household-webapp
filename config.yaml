@@ -11,5 +11,9 @@ database:
 seed:
   dir: seed
 
+# Features to run. Leave it out to run them all; the names are cashflow, goals, savings,
+# credits and investments. A module that is left out has no routes and no CSV files are used.
+# modules: [cashflow, goals]
+
 log:
   level: info

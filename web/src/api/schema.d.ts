@@ -76,6 +76,8 @@ export interface paths {
                             version: string;
                             /** @description The version of the sync protocol (POST /sync/cashflow). It goes up when a change would break an app built for the old one. */
                             syncApi: number;
+                            /** @description The feature modules this server runs (set by modules in config.yaml). The routes of a module that is not listed answer 404. */
+                            modules: ("cashflow" | "goals" | "savings" | "credits" | "investments")[];
                         };
                     };
                 };

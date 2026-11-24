@@ -29,9 +29,10 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	_ = api.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleInfo reports which build is running and which sync protocol it speaks.
+// handleInfo reports which build is running, which sync protocol it speaks and
+// which feature modules it runs.
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
-	_ = api.WriteJSON(w, http.StatusOK, map[string]any{"version": s.version, "syncApi": syncAPIVersion})
+	_ = api.WriteJSON(w, http.StatusOK, map[string]any{"version": s.version, "syncApi": syncAPIVersion, "modules": s.modules.Names()})
 }
 
 // handleNotFound answers every unmatched request with a JSON error: 405 with

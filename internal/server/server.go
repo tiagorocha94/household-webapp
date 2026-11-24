@@ -15,6 +15,7 @@ import (
 	creditsapi "github.com/tiagorocha94/household-webapp/internal/credits/api"
 	goalsapi "github.com/tiagorocha94/household-webapp/internal/goals/api"
 	investmentsapi "github.com/tiagorocha94/household-webapp/internal/investments/api"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	overviewapi "github.com/tiagorocha94/household-webapp/internal/overview/api"
 	savingsapi "github.com/tiagorocha94/household-webapp/internal/savings/api"
 )
@@ -27,6 +28,9 @@ type Options struct {
 	// Frontend is the built frontend. When set, the server serves it at /
 	// next to the API. Leave it nil for an API-only server.
 	Frontend fs.FS
+	// Modules is the feature modules that get routes. The zero value serves
+	// all of them.
+	Modules modules.Set
 }
 
 // Server holds the HTTP server dependencies and configuration.
@@ -35,6 +39,7 @@ type Server struct {
 	version            string
 	addr               string
 	frontend           fs.FS
+	modules            modules.Set
 	router             *http.ServeMux
 	handler            http.Handler
 	authHandler        *authapi.Handler
@@ -54,6 +59,7 @@ func New(logger *slog.Logger, version, addr string, authService *authservice.Ser
 		version:            version,
 		addr:               addr,
 		frontend:           opts.Frontend,
+		modules:            opts.Modules,
 		router:             http.NewServeMux(),
 		authHandler:        authHandler,
 		authService:        authService,
@@ -126,43 +132,53 @@ func (s *Server) routes() {
 	// JSON API: read-only, authenticated with the session cookie. The goals,
 	// credits, investments and savings routes (and the budget and own balance
 	// below) also take a device token, so the phone can show them.
-	s.router.Handle("GET /api/v1/goals/accounts", s.handleReadable("list goal accounts", s.goalsHandler.ListAccounts))
-	s.router.Handle("GET /api/v1/goals/accounts/{id}", s.handleReadable("get goal account", s.goalsHandler.GetAccount))
-	s.router.Handle("GET /api/v1/goals/accounts/{id}/goals", s.handleReadable("list goals", s.goalsHandler.ListGoals))
-	s.router.Handle("GET /api/v1/goals/accounts/{id}/movements", s.handleReadable("list goal movements", s.goalsHandler.ListMovements))
-	s.router.Handle("GET /api/v1/goals/accounts/{id}/projection", s.handleReadable("get goal projection", s.goalsHandler.GetProjection))
-	s.router.Handle("GET /api/v1/goals/{id}", s.handleReadable("get goal", s.goalsHandler.GetGoal))
+	if s.modules.Has(modules.Goals) {
+		s.router.Handle("GET /api/v1/goals/accounts", s.handleReadable("list goal accounts", s.goalsHandler.ListAccounts))
+		s.router.Handle("GET /api/v1/goals/accounts/{id}", s.handleReadable("get goal account", s.goalsHandler.GetAccount))
+		s.router.Handle("GET /api/v1/goals/accounts/{id}/goals", s.handleReadable("list goals", s.goalsHandler.ListGoals))
+		s.router.Handle("GET /api/v1/goals/accounts/{id}/movements", s.handleReadable("list goal movements", s.goalsHandler.ListMovements))
+		s.router.Handle("GET /api/v1/goals/accounts/{id}/projection", s.handleReadable("get goal projection", s.goalsHandler.GetProjection))
+		s.router.Handle("GET /api/v1/goals/{id}", s.handleReadable("get goal", s.goalsHandler.GetGoal))
+	}
 
 	s.router.Handle("GET /api/v1/overview", s.handle("get overview", s.overviewHandler.Get))
 	s.router.Handle("GET /api/v1/overview/net-worth", s.handle("get net worth history", s.overviewHandler.GetNetWorth))
 
-	s.router.Handle("GET /api/v1/credits", s.handleReadable("list credits", s.creditsHandler.ListContracts))
-	s.router.Handle("GET /api/v1/credits/due", s.handleReadable("list credits due", s.creditsHandler.ListDue))
-	s.router.Handle("GET /api/v1/credits/{id}", s.handleReadable("get credit", s.creditsHandler.GetContract))
-	s.router.Handle("GET /api/v1/credits/{id}/payments", s.handleReadable("list credit payments", s.creditsHandler.ListPayments))
+	if s.modules.Has(modules.Credits) {
+		s.router.Handle("GET /api/v1/credits", s.handleReadable("list credits", s.creditsHandler.ListContracts))
+		s.router.Handle("GET /api/v1/credits/due", s.handleReadable("list credits due", s.creditsHandler.ListDue))
+		s.router.Handle("GET /api/v1/credits/{id}", s.handleReadable("get credit", s.creditsHandler.GetContract))
+		s.router.Handle("GET /api/v1/credits/{id}/payments", s.handleReadable("list credit payments", s.creditsHandler.ListPayments))
+	}
 
-	s.router.Handle("GET /api/v1/investments/entities", s.handleReadable("list investment entities", s.investmentsHandler.ListEntities))
-	s.router.Handle("GET /api/v1/investments/entities/{id}", s.handleReadable("get investment entity", s.investmentsHandler.GetEntity))
-	s.router.Handle("GET /api/v1/investments/entities/{id}/instruments", s.handleReadable("list investment instruments", s.investmentsHandler.ListEntityInstruments))
-	s.router.Handle("GET /api/v1/investments/instruments/{id}", s.handleReadable("get investment instrument", s.investmentsHandler.GetInstrument))
-	s.router.Handle("GET /api/v1/investments/instruments/{id}/contributions", s.handleReadable("list investment contributions", s.investmentsHandler.ListContributions))
-	s.router.Handle("GET /api/v1/investments/instruments/{id}/snapshots", s.handleReadable("list investment snapshots", s.investmentsHandler.ListSnapshots))
+	if s.modules.Has(modules.Investments) {
+		s.router.Handle("GET /api/v1/investments/entities", s.handleReadable("list investment entities", s.investmentsHandler.ListEntities))
+		s.router.Handle("GET /api/v1/investments/entities/{id}", s.handleReadable("get investment entity", s.investmentsHandler.GetEntity))
+		s.router.Handle("GET /api/v1/investments/entities/{id}/instruments", s.handleReadable("list investment instruments", s.investmentsHandler.ListEntityInstruments))
+		s.router.Handle("GET /api/v1/investments/instruments/{id}", s.handleReadable("get investment instrument", s.investmentsHandler.GetInstrument))
+		s.router.Handle("GET /api/v1/investments/instruments/{id}/contributions", s.handleReadable("list investment contributions", s.investmentsHandler.ListContributions))
+		s.router.Handle("GET /api/v1/investments/instruments/{id}/snapshots", s.handleReadable("list investment snapshots", s.investmentsHandler.ListSnapshots))
+	}
 
-	s.router.Handle("GET /api/v1/savings/accounts", s.handleReadable("list savings accounts", s.savingsHandler.ListAccounts))
-	s.router.Handle("GET /api/v1/savings/accounts/{id}", s.handleReadable("get savings account", s.savingsHandler.GetAccount))
-	s.router.Handle("GET /api/v1/savings/accounts/{id}/movements", s.handleReadable("list savings movements", s.savingsHandler.ListMovements))
-	s.router.Handle("GET /api/v1/savings/accounts/{id}/snapshots", s.handleReadable("list savings snapshots", s.savingsHandler.ListSnapshots))
+	if s.modules.Has(modules.Savings) {
+		s.router.Handle("GET /api/v1/savings/accounts", s.handleReadable("list savings accounts", s.savingsHandler.ListAccounts))
+		s.router.Handle("GET /api/v1/savings/accounts/{id}", s.handleReadable("get savings account", s.savingsHandler.GetAccount))
+		s.router.Handle("GET /api/v1/savings/accounts/{id}/movements", s.handleReadable("list savings movements", s.savingsHandler.ListMovements))
+		s.router.Handle("GET /api/v1/savings/accounts/{id}/snapshots", s.handleReadable("list savings snapshots", s.savingsHandler.ListSnapshots))
+	}
 
-	s.router.Handle("GET /api/v1/cashflow/categories", s.handle("list cashflow categories", s.cashflowHandler.ListCategories))
-	s.router.Handle("GET /api/v1/cashflow/budget/{month}", s.handleReadable("get cashflow budget", s.cashflowHandler.GetBudget))
-	s.router.Handle("GET /api/v1/cashflow/balance/{month}", s.handleReadable("get own cash balance", s.cashflowHandler.GetOwnBalance))
-	s.router.Handle("GET /api/v1/cashflow/months", s.handle("list cashflow months", s.cashflowHandler.ListMonths))
-	s.router.Handle("GET /api/v1/cashflow/months/{month}", s.handle("get cashflow month", s.cashflowHandler.GetMonth))
-	s.router.Handle("GET /api/v1/cashflow/months/{month}/movements", s.handle("list cashflow movements", s.cashflowHandler.ListMonthMovements))
+	if s.modules.Has(modules.Cashflow) {
+		s.router.Handle("GET /api/v1/cashflow/categories", s.handle("list cashflow categories", s.cashflowHandler.ListCategories))
+		s.router.Handle("GET /api/v1/cashflow/budget/{month}", s.handleReadable("get cashflow budget", s.cashflowHandler.GetBudget))
+		s.router.Handle("GET /api/v1/cashflow/balance/{month}", s.handleReadable("get own cash balance", s.cashflowHandler.GetOwnBalance))
+		s.router.Handle("GET /api/v1/cashflow/months", s.handle("list cashflow months", s.cashflowHandler.ListMonths))
+		s.router.Handle("GET /api/v1/cashflow/months/{month}", s.handle("get cashflow month", s.cashflowHandler.GetMonth))
+		s.router.Handle("GET /api/v1/cashflow/months/{month}/movements", s.handle("list cashflow movements", s.cashflowHandler.ListMonthMovements))
 
-	// JSON API: the one write endpoint, for enrolled devices only (bearer
-	// token, not the session cookie).
-	s.router.Handle("POST /api/v1/sync/cashflow", s.authHandler.RequireDevice(s.adaptJSON("sync cashflow", s.cashflowHandler.Sync)))
+		// JSON API: the one write endpoint, for enrolled devices only (bearer
+		// token, not the session cookie).
+		s.router.Handle("POST /api/v1/sync/cashflow", s.authHandler.RequireDevice(s.adaptJSON("sync cashflow", s.cashflowHandler.Sync)))
+	}
 
 	// Anything else is the frontend when there is one, and a JSON 404 or 405
 	// otherwise, including for removed page routes.

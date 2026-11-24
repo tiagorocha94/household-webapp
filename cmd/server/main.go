@@ -38,6 +38,7 @@ import (
 	investmentsapi "github.com/tiagorocha94/household-webapp/internal/investments/api"
 	investmentsservice "github.com/tiagorocha94/household-webapp/internal/investments/service"
 	investmentsstore "github.com/tiagorocha94/household-webapp/internal/investments/store"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/overview"
 	overviewapi "github.com/tiagorocha94/household-webapp/internal/overview/api"
 	"github.com/tiagorocha94/household-webapp/internal/savings"
@@ -88,10 +89,11 @@ func run(configPath string, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	logger.Info("starting household-app", "version", buildVersion())
+	moduleSet := cfg.ModuleSet()
+	logger.Info("starting household-app", "version", buildVersion(), "modules", moduleSet.Names())
 
 	if dryRun {
-		return previewStartup(os.Stdout, cfg.Database.Path, cfg.Seed.Dir, logger)
+		return previewStartup(os.Stdout, cfg.Database.Path, cfg.Seed.Dir, moduleSet, logger)
 	}
 
 	db, err := database.Open(cfg.Database.Path)
@@ -104,7 +106,7 @@ func run(configPath string, dryRun bool) error {
 		}
 	}()
 
-	if err := prepareData(db, cfg.Seed.Dir, logger); err != nil {
+	if err := prepareData(db, cfg.Seed.Dir, moduleSet, logger); err != nil {
 		return err
 	}
 
@@ -143,7 +145,7 @@ func run(configPath string, dryRun bool) error {
 
 	addr := net.JoinHostPort(cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 	srv := server.New(logger, buildVersion(), addr, authService, authHandler, goalsHandler, creditsHandler, investmentsHandler, savingsHandler, cashflowHandler, overviewHandler,
-		server.Options{Frontend: frontend(logger)})
+		server.Options{Frontend: frontend(logger), Modules: moduleSet})
 
 	if err := srv.Start(ctx); err != nil {
 		return fmt.Errorf("serve http: %w", err)
@@ -158,11 +160,11 @@ func run(configPath string, dryRun bool) error {
 // allocations and goal completions), and an export so that sync
 // changes are persisted back to the CSV files. Any failure aborts startup,
 // and export only runs after a successful import.
-func prepareData(db *sql.DB, seedDir string, logger *slog.Logger) error {
+func prepareData(db *sql.DB, seedDir string, enabled modules.Set, logger *slog.Logger) error {
 	if err := migrations.Run(db, logger); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
 	}
-	runner := newSeedRunner(logger)
+	runner := newSeedRunner(logger, enabled)
 	if err := runner.Import(db, seedDir); err != nil {
 		return fmt.Errorf("import seed data: %w", err)
 	}
@@ -175,11 +177,29 @@ func prepareData(db *sql.DB, seedDir string, logger *slog.Logger) error {
 	return nil
 }
 
-// newSeedRunner lists the modules that import, sync and export CSV data. The
-// modules do not depend on each other's rows, except that investments,
-// savings and cashflow name users from users.csv, so auth stays first.
-func newSeedRunner(logger *slog.Logger) *seed.Runner {
-	return seed.NewRunner(logger, auth.SeedModule{}, goals.SeedModule{}, credits.SeedModule{}, investments.SeedModule{}, savings.SeedModule{}, cashflow.SeedModule{})
+// newSeedRunner lists the modules that import, sync and export CSV data: the
+// enabled feature modules, after authentication. The modules do not depend on
+// each other's rows, except that investments, savings and cashflow name users
+// from users.csv, so auth stays first. The files of a module that is not
+// enabled are neither read nor written.
+func newSeedRunner(logger *slog.Logger, enabled modules.Set) *seed.Runner {
+	list := []seed.Module{auth.SeedModule{}}
+	if enabled.Has(modules.Goals) {
+		list = append(list, goals.SeedModule{})
+	}
+	if enabled.Has(modules.Credits) {
+		list = append(list, credits.SeedModule{})
+	}
+	if enabled.Has(modules.Investments) {
+		list = append(list, investments.SeedModule{})
+	}
+	if enabled.Has(modules.Savings) {
+		list = append(list, savings.SeedModule{})
+	}
+	if enabled.Has(modules.Cashflow) {
+		list = append(list, cashflow.SeedModule{})
+	}
+	return seed.NewRunner(logger, list...)
 }
 
 // frontend returns the frontend built into the binary, or nil (the server then

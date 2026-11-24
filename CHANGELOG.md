@@ -4,6 +4,9 @@ User-facing changes only. Describes what users can see and do in the application
 
 ## [Unreleased]
 
+### Modules
+- The server can run only the features you choose with `modules` in `config.yaml` (cashflow, goals, savings, credits, investments); by default all of them run. A feature that is left out has no pages in the web app and its CSV files are not used.
+
 ## [v0.1.0] - 2026-11-24
 
 First public release. The household's data is kept in CSV files that the server imports on start and writes back; the web app and the JSON API read it, and enrolled phones add cashflow movements.
