@@ -6,6 +6,7 @@ linters:
   default: standard # errcheck, govet, ineffassign, staticcheck, unused
   enable:
     - decorder # declaration order: const, var, type, func
+    - depguard # modules do not import each other (docs/modules/README.md)
     - errorlint
     - forbidigo
     - funcorder # constructors first, then exported before unexported methods
@@ -20,6 +21,83 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: true
       disable-dec-num-check: true
+    depguard:
+      rules:
+        cashflow:
+          files:
+            - "**/internal/cashflow/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/tiagorocha94/household-webapp/internal/goals
+              desc: "cashflow must not import goals; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/savings
+              desc: "cashflow must not import savings; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/credits
+              desc: "cashflow must not import credits; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/investments
+              desc: "cashflow must not import investments; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/overview
+              desc: "cashflow must not import overview; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+        goals:
+          files:
+            - "**/internal/goals/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/tiagorocha94/household-webapp/internal/cashflow
+              desc: "goals must not import cashflow; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/savings
+              desc: "goals must not import savings; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/credits
+              desc: "goals must not import credits; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/investments
+              desc: "goals must not import investments; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/overview
+              desc: "goals must not import overview; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+        savings:
+          files:
+            - "**/internal/savings/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/tiagorocha94/household-webapp/internal/cashflow
+              desc: "savings must not import cashflow; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/goals
+              desc: "savings must not import goals; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/credits
+              desc: "savings must not import credits; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/investments
+              desc: "savings must not import investments; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/overview
+              desc: "savings must not import overview; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+        credits:
+          files:
+            - "**/internal/credits/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/tiagorocha94/household-webapp/internal/cashflow
+              desc: "credits must not import cashflow; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/goals
+              desc: "credits must not import goals; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/savings
+              desc: "credits must not import savings; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/investments
+              desc: "credits must not import investments; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/overview
+              desc: "credits must not import overview; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+        investments:
+          files:
+            - "**/internal/investments/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/tiagorocha94/household-webapp/internal/cashflow
+              desc: "investments must not import cashflow; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/goals
+              desc: "investments must not import goals; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/savings
+              desc: "investments must not import savings; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/credits
+              desc: "investments must not import credits; modules are independent, and only the overview, the phone app and cmd/server bring them together"
+            - pkg: github.com/tiagorocha94/household-webapp/internal/overview
+              desc: "investments must not import overview; modules are independent, and only the overview, the phone app and cmd/server bring them together"
     forbidigo:
       forbid:
         # Loggers are injected (docs/decisions/007); the log package is not used.
