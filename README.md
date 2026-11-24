@@ -78,7 +78,10 @@ seed:
   dir: seed
 log:
   level: info
+# modules: [cashflow, goals]  # which features run; leave it out to run all of them
 ```
+
+`modules` chooses the features the server runs: `cashflow`, `goals`, `savings`, `credits`, `investments`. A module that is left out has no API routes (they answer 404), its CSV files are neither read nor written, and the web app hides its pages. `GET /api/v1/info` lists the modules that run. An unknown name stops the server at start.
 
 The server listens on localhost only. To reach it from another machine set `server.host` to `0.0.0.0`, but note there is no TLS. If you put it behind a TLS proxy, set `server.secure_cookies: true`.
 

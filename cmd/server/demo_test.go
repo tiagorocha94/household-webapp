@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/tiagorocha94/household-webapp/internal/database"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
 
@@ -62,7 +63,7 @@ func TestDemoDataStartsAndIsRepeatable(t *testing.T) {
 	dir := t.TempDir()
 	copyDir(t, filepath.Join("..", "..", "demo"), dir)
 
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("first prepareData() on the demo data error = %v", err)
 	}
 	first := readDir(t, dir)
@@ -70,7 +71,7 @@ func TestDemoDataStartsAndIsRepeatable(t *testing.T) {
 		t.Fatal("no files after the first start")
 	}
 
-	if err := prepareData(db, dir, testutil.Logger()); err != nil {
+	if err := prepareData(db, dir, modules.Set{}, testutil.Logger()); err != nil {
 		t.Fatalf("second prepareData() error = %v", err)
 	}
 	second := readDir(t, dir)

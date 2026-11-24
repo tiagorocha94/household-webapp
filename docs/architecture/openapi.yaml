@@ -39,7 +39,7 @@ paths:
       responses:
         "200":
           description: Version
-          content: { application/json: { schema: { type: object, properties: { version: { type: string }, syncApi: { type: integer, description: The version of the sync protocol (POST /sync/cashflow). It goes up when a change would break an app built for the old one. } }, required: [version, syncApi] } } }
+          content: { application/json: { schema: { type: object, properties: { version: { type: string }, syncApi: { type: integer, description: The version of the sync protocol (POST /sync/cashflow). It goes up when a change would break an app built for the old one. }, modules: { type: array, description: The feature modules this server runs (set by modules in config.yaml). The routes of a module that is not listed answer 404., items: { type: string, enum: [cashflow, goals, savings, credits, investments] } } }, required: [version, syncApi, modules] } } }
   /auth/login:
     post:
       summary: Log in and start a session

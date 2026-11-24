@@ -3,8 +3,11 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 )
 
 func writeConfig(t *testing.T, content string) string {
@@ -37,6 +40,39 @@ func TestLoadReadsSeedDir(t *testing.T) {
 	}
 	if cfg.Seed.Dir != "data/csv" {
 		t.Fatalf("Seed.Dir = %q, want data/csv", cfg.Seed.Dir)
+	}
+}
+
+func TestLoadRunsEveryModuleByDefault(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(writeConfig(t, ""))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if got := cfg.ModuleSet().Names(); !slices.Equal(got, modules.All()) {
+		t.Fatalf("ModuleSet().Names() = %v, want %v", got, modules.All())
+	}
+}
+
+func TestLoadReadsTheModulesToRun(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(writeConfig(t, "modules: [goals, cashflow]\n"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if got, want := cfg.ModuleSet().Names(), []string{modules.Cashflow, modules.Goals}; !slices.Equal(got, want) {
+		t.Fatalf("ModuleSet().Names() = %v, want %v", got, want)
+	}
+}
+
+func TestLoadRejectsAnUnknownModule(t *testing.T) {
+	t.Parallel()
+
+	_, err := Load(writeConfig(t, "modules: [cashflow, goal]\n"))
+	if err == nil || !strings.Contains(err.Error(), `"goal"`) {
+		t.Fatalf("Load() error = %v, want it to name the unknown module", err)
 	}
 }
 
