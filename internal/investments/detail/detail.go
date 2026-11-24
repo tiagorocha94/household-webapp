@@ -1,4 +1,6 @@
-package details
+// Package detail keeps the investments part of a cashflow movement's detail, in this
+// module's own tables. It is the investments Applier of package details.
+package detail
 
 import (
 	"database/sql"
@@ -7,24 +9,13 @@ import (
 	"sort"
 
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
+	"github.com/tiagorocha94/household-webapp/internal/details"
+	"github.com/tiagorocha94/household-webapp/internal/modules"
 	"github.com/tiagorocha94/household-webapp/internal/money"
 )
 
-// Investments is money put into the instruments of one investment account. The
-// lines may add up to less than the movement while the split is incomplete,
-// never to more. No lines keeps nothing, as there is no instrument to hold it.
-type Investments struct {
-	EntityID int64
-	Lines    []InvestmentLine
-}
-
-// InvestmentLine is the part of the movement that went into one instrument.
-type InvestmentLine struct {
-	InstrumentID int64
-	AmountCents  money.Cents
-	// ValueCents is the instrument's value seen now. Nil records nothing.
-	ValueCents *money.Cents
-}
+// Applier is the investments module's part of the detail of a movement.
+type Applier struct{}
 
 type contribution struct {
 	instrumentID int64
@@ -32,7 +23,34 @@ type contribution struct {
 	cents        money.Cents
 }
 
-func checkInvestments(tx *sql.Tx, in Input, inv Investments) (string, error) {
+// Module returns the module's name.
+func (Applier) Module() string { return modules.Investments }
+
+// Noun says what the module takes.
+func (Applier) Noun() string { return "an investments detail" }
+
+// Check says why the detail cannot be written, or "" when it can.
+func (Applier) Check(tx *sql.Tx, in details.Input, d details.Detail) (string, error) {
+	return checkInvestments(tx, in, *d.Investments)
+}
+
+// CheckFit refuses a change of the movement that no longer fits what is stored.
+func (Applier) CheckFit(tx *sql.Tx, in details.Input) (string, error) {
+	return checkInvestmentsFit(tx, in)
+}
+
+// Apply makes what is stored match the detail.
+func (Applier) Apply(tx *sql.Tx, in details.Input, d details.Detail) error {
+	return applyInvestments(tx, in, *d.Investments)
+}
+
+// Follow moves what is stored to the movement's month and amount.
+func (Applier) Follow(tx *sql.Tx, in details.Input) error { return followInvestments(tx, in) }
+
+// Remove deletes what is stored for the movement.
+func (Applier) Remove(tx *sql.Tx, syncID string) error { return removeInvestments(tx, syncID) }
+
+func checkInvestments(tx *sql.Tx, in details.Input, inv details.Investments) (string, error) {
 	var owner sql.NullInt64
 	err := tx.QueryRow("SELECT user_id FROM investment_entities WHERE id = ?", inv.EntityID).Scan(&owner)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -80,7 +98,7 @@ func checkInvestments(tx *sql.Tx, in Input, inv Investments) (string, error) {
 // checkInvestmentsFit refuses a change of the movement that leaves the stored
 // split larger than the movement, since the split would then be wrong. The
 // device sends the detail again with the change.
-func checkInvestmentsFit(tx *sql.Tx, in Input) (string, error) {
+func checkInvestmentsFit(tx *sql.Tx, in details.Input) (string, error) {
 	var total money.Cents
 	if err := tx.QueryRow(
 		"SELECT COALESCE(SUM(amount_cents), 0) FROM investment_contributions WHERE movement_sync_id = ?",
@@ -96,7 +114,7 @@ func checkInvestmentsFit(tx *sql.Tx, in Input) (string, error) {
 
 // applyInvestments makes the movement's contributions match the lines and
 // records the values seen now.
-func applyInvestments(tx *sql.Tx, in Input, inv Investments) error {
+func applyInvestments(tx *sql.Tx, in details.Input, inv details.Investments) error {
 	want := make([]contribution, 0, len(inv.Lines))
 	for _, l := range inv.Lines {
 		want = append(want, contribution{l.InstrumentID, in.Month, l.AmountCents})
@@ -147,7 +165,7 @@ func applyInvestments(tx *sql.Tx, in Input, inv Investments) error {
 	}
 
 	if changed {
-		return csvstate.Raise(tx, InvestmentsModule)
+		return csvstate.Raise(tx, modules.Investments)
 	}
 	return nil
 }
@@ -194,7 +212,7 @@ func removeContributions(tx *sql.Tx, syncID string) error {
 
 // followInvestments moves the contributions of a movement to its month. Their
 // amounts stay, and checkInvestmentsFit has made sure they still fit.
-func followInvestments(tx *sql.Tx, in Input) error {
+func followInvestments(tx *sql.Tx, in details.Input) error {
 	res, err := tx.Exec(
 		`UPDATE investment_contributions SET month = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE movement_sync_id = ? AND month != ?`,
@@ -203,7 +221,7 @@ func followInvestments(tx *sql.Tx, in Input) error {
 	if err != nil {
 		return fmt.Errorf("move the contributions of movement %s: %w", in.SyncID, err)
 	}
-	return raiseIfChanged(tx, res, InvestmentsModule)
+	return details.RaiseIfChanged(tx, res, modules.Investments)
 }
 
 func removeInvestments(tx *sql.Tx, syncID string) error {
@@ -211,5 +229,5 @@ func removeInvestments(tx *sql.Tx, syncID string) error {
 	if err != nil {
 		return fmt.Errorf("delete the contributions of movement %s: %w", syncID, err)
 	}
-	return raiseIfChanged(tx, res, InvestmentsModule)
+	return details.RaiseIfChanged(tx, res, modules.Investments)
 }

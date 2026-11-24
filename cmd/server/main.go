@@ -25,17 +25,20 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/config"
 	"github.com/tiagorocha94/household-webapp/internal/credits"
 	creditsapi "github.com/tiagorocha94/household-webapp/internal/credits/api"
+	creditsdetail "github.com/tiagorocha94/household-webapp/internal/credits/detail"
 	creditsservice "github.com/tiagorocha94/household-webapp/internal/credits/service"
 	creditsstore "github.com/tiagorocha94/household-webapp/internal/credits/store"
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/database"
 	"github.com/tiagorocha94/household-webapp/internal/database/migrations"
+	"github.com/tiagorocha94/household-webapp/internal/details"
 	"github.com/tiagorocha94/household-webapp/internal/goals"
 	goalsapi "github.com/tiagorocha94/household-webapp/internal/goals/api"
 	goalsservice "github.com/tiagorocha94/household-webapp/internal/goals/service"
 	goalsstore "github.com/tiagorocha94/household-webapp/internal/goals/store"
 	"github.com/tiagorocha94/household-webapp/internal/investments"
 	investmentsapi "github.com/tiagorocha94/household-webapp/internal/investments/api"
+	investmentsdetail "github.com/tiagorocha94/household-webapp/internal/investments/detail"
 	investmentsservice "github.com/tiagorocha94/household-webapp/internal/investments/service"
 	investmentsstore "github.com/tiagorocha94/household-webapp/internal/investments/store"
 	"github.com/tiagorocha94/household-webapp/internal/modules"
@@ -43,6 +46,7 @@ import (
 	overviewapi "github.com/tiagorocha94/household-webapp/internal/overview/api"
 	"github.com/tiagorocha94/household-webapp/internal/savings"
 	savingsapi "github.com/tiagorocha94/household-webapp/internal/savings/api"
+	savingsdetail "github.com/tiagorocha94/household-webapp/internal/savings/detail"
 	savingsservice "github.com/tiagorocha94/household-webapp/internal/savings/service"
 	savingsstore "github.com/tiagorocha94/household-webapp/internal/savings/store"
 	"github.com/tiagorocha94/household-webapp/internal/seed"
@@ -132,11 +136,10 @@ func run(configPath string, dryRun bool) error {
 	cashflowService := cashflowservice.New(cashflowStore)
 	// Devices change movements while the server runs; keep the CSV file in step.
 	cashflowService.EnableMirror(cashflow.NewCSVMirror(db, cfg.Seed.Dir), logger)
-	// The detail of a movement is saved in the savings, investments and credits
-	// tables; rewrite their files too.
-	cashflowService.EnableDetailMirrors(csvstate.NewMirror(db, cfg.Seed.Dir, savings.SeedModule{}),
-		csvstate.NewMirror(db, cfg.Seed.Dir, investments.SeedModule{}),
-		csvstate.NewMirror(db, cfg.Seed.Dir, credits.SeedModule{}))
+	// The detail of a movement is saved by the modules that run, in their own
+	// tables; they rewrite their files too.
+	detailRegistry, detailMirrors := detailModules(db, cfg.Seed.Dir, moduleSet)
+	cashflowService.EnableDetails(detailRegistry, detailMirrors...)
 	cashflowHandler := cashflowapi.New(cashflowService)
 	overviewHandler := overviewapi.New(
 		overview.New(goalsService, creditsService, investmentsService, savingsService, cashflowService),
@@ -200,6 +203,27 @@ func newSeedRunner(logger *slog.Logger, enabled modules.Set) *seed.Runner {
 		list = append(list, cashflow.SeedModule{})
 	}
 	return seed.NewRunner(logger, list...)
+}
+
+// detailModules returns the appliers of the modules that keep the detail of a
+// cashflow movement, and a mirror for each one's files. A module that does not
+// run is left out, so a device cannot send a detail for it.
+func detailModules(db *sql.DB, seedDir string, enabled modules.Set) (*details.Registry, []cashflowservice.Mirror) {
+	var appliers []details.Applier
+	var mirrors []cashflowservice.Mirror
+	if enabled.Has(modules.Savings) {
+		appliers = append(appliers, savingsdetail.Applier{})
+		mirrors = append(mirrors, csvstate.NewMirror(db, seedDir, savings.SeedModule{}))
+	}
+	if enabled.Has(modules.Investments) {
+		appliers = append(appliers, investmentsdetail.Applier{})
+		mirrors = append(mirrors, csvstate.NewMirror(db, seedDir, investments.SeedModule{}))
+	}
+	if enabled.Has(modules.Credits) {
+		appliers = append(appliers, creditsdetail.Applier{})
+		mirrors = append(mirrors, csvstate.NewMirror(db, seedDir, credits.SeedModule{}))
+	}
+	return details.NewRegistry(appliers...), mirrors
 }
 
 // frontend returns the frontend built into the binary, or nil (the server then
