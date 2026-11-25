@@ -6,8 +6,13 @@ household-app.exe
 # point seed.dir at it.
 /seed/
 
-# The demo run's database and data copy (make demo)
+# The demo run's database and data copy (make demo), and the e2e servers' copies
 .demo/
+.demo-e2e-*/
+
+# Playwright output
+web/test-results/
+web/playwright-report/
 
 # SQLite database files
 *.db
