@@ -15,6 +15,15 @@ type clock struct {
 	now time.Time
 }
 
+// harness runs a scheduler on a clock and ticks that the test controls.
+type harness struct {
+	clock *clock
+	ticks chan time.Time
+	runs  chan string
+	done  chan struct{}
+	stop  context.CancelFunc
+}
+
 func (c *clock) get() time.Time {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -25,15 +34,6 @@ func (c *clock) set(t time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.now = t
-}
-
-// harness runs a scheduler on a clock and ticks that the test controls.
-type harness struct {
-	clock *clock
-	ticks chan time.Time
-	runs  chan string
-	done  chan struct{}
-	stop  context.CancelFunc
 }
 
 func start(t *testing.T, first time.Time, jobs func(runs chan<- string) []Job) *harness {
