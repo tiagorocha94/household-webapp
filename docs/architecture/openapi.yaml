@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: household API
-  version: 0.1.0
+  version: 0.2.0
   description: >
     JSON API that is read-only for browsers. Authenticated with a session
     cookie obtained from POST /auth/login, so it is intended for same-origin
