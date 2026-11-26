@@ -172,7 +172,8 @@ shows up as a diff and a push is the backup.
 
 `sync` runs after every import:
 
-- Creates missing goal allocations in cent-exact monthly amounts.
+- Creates missing goal allocations in cent-exact monthly amounts. A running
+  server does the same once a day ([background jobs](overview.md#background-jobs)).
 - Settles the goals that were completed by hand: records the closing movement
   (a release of the leftover or a cover of the overspend) and the closing
   balance, in one transaction per goal. No goal completes on its own.
