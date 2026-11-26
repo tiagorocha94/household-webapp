@@ -4,8 +4,12 @@ User-facing changes only. Describes what users can see and do in the application
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-11-26
+
+The server can now run only some of its features, for a household that wants, say, just the cashflow.
+
 ### Modules
-- The server can run only the features you choose with `modules` in `config.yaml` (cashflow, goals, savings, credits, investments); by default all of them run. A feature that is left out has no pages in the web app and its CSV files are not used.
+- The server can run only the features you choose with `modules` in `config.yaml` (cashflow, goals, savings, credits, investments); by default all of them run, and `GET /api/v1/info` lists the ones that do. A feature that is left out has no pages in the web app and its CSV files are not used.
 - A phone's movement that says where its money went (a savings deposit, investment contributions or a credit payment) is refused when that feature is not running; movements without such a detail are still saved.
 - The Home page and Net worth show only the features that are running: figures, lists, warnings and columns of a feature that is left out are not there.
 - Each module can run alone: the demo data is tested with every module on its own and in groups, and the linter rejects a module that imports another. See [docs/modules](docs/modules/README.md).
