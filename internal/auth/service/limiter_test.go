@@ -82,3 +82,26 @@ func TestLoginLimiterDropsEndedWindows(t *testing.T) {
 		t.Errorf("user:new count = %d, want 1", l.failures["user:new"].count)
 	}
 }
+
+func TestLoginLimiterPruneDropsOnlyTheWindowsThatEnded(t *testing.T) {
+	t.Parallel()
+
+	l, now := newTestLimiter(3, time.Minute)
+	l.Fail("ip:old")
+	*now = now.Add(45 * time.Second)
+	l.Fail("ip:recent")
+
+	*now = now.Add(30 * time.Second) // old ended 15s ago, recent has 45s left
+	if dropped := l.Prune(); dropped != 1 {
+		t.Fatalf("Prune() = %d, want 1", dropped)
+	}
+	if len(l.failures) != 1 {
+		t.Errorf("entries after Prune = %v, want only the recent one", l.failures)
+	}
+	if _, ok := l.failures["ip:recent"]; !ok {
+		t.Error("the window still running was dropped")
+	}
+	if dropped := l.Prune(); dropped != 0 {
+		t.Errorf("second Prune() = %d, want 0", dropped)
+	}
+}

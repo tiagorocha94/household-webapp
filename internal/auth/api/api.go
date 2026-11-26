@@ -25,6 +25,9 @@ const (
 	// username may have within loginFailureWindow before logins are refused.
 	maxLoginFailures   = 10
 	loginFailureWindow = 15 * time.Minute
+	// LimitPruneInterval is how often PruneLimits is worth calling: a window
+	// that has ended is of no use, and none lasts longer than this.
+	LimitPruneInterval = loginFailureWindow
 )
 
 // Options configures the Handler.
@@ -53,6 +56,12 @@ type apiUser struct {
 type apiLoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+// PruneLimits forgets the failed attempts whose window has ended.
+func (h *Handler) PruneLimits() {
+	h.limiter.Prune()
+	h.deviceLimiter.Prune()
 }
 
 // New creates a new Handler backed by the given Service, logging to log.

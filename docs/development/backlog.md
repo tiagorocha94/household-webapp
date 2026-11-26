@@ -40,9 +40,6 @@ ADRs rather than here.
 ## Product
 
 - Recalculate remaining goal allocations when extra money is added.
-- Create goal allocations on the first request of a new month, or on a daily
-  timer, instead of only at startup. Until then the server must be restarted at
-  the start of each month.
 - Complete a goal from household-app (only from its final month onward, and only
   once fully allocated), which today is done by hand in the data
   ([ADR 023](../decisions/023-goals-are-closed-by-hand.md)).

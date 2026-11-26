@@ -17,6 +17,26 @@ them into SQLite on startup and exports them back after sync. The frontend is a 
 aborts startup, so the server never accepts requests on half-prepared data.
 Details and CSV rules: [csv-seed.md](csv-seed.md).
 
+## Background jobs
+
+While the server runs, `internal/scheduler` does the work nobody asks for. It
+looks at the clock once a minute, which costs nothing, and runs each job on its
+own schedule: `Every` an interval (such as 15 minutes), or, when it is zero,
+once a day on the first look after the local date changes. A job that is due
+runs once however long it has been (a laptop that slept for days), a job that
+fails or panics is logged and waits for its next turn, and nothing here stops
+the server. Jobs must be safe to repeat. `AtStart` runs a job when the server
+starts, for work start-up has not just done; its schedule then counts from that
+moment. `cmd/server/jobs.go` lists them:
+
+| Job | Schedule | What it does |
+| --- | --- | --- |
+| goal allocations | daily | The goals sync of start-up, on the live database, so a new month needs no restart. The goals files are then rewritten through the same locked mirror devices use, never by a full export, which could overwrite a newer file with an older snapshot. Only when the goals module runs. |
+| login limits | every 15 minutes (the failure window) | Forgets the failed logins whose window has ended, so they do not stay in memory after a burst of attempts. |
+
+A new job is a `scheduler.Job` added to `backgroundJobs`; give it the schedule it
+needs rather than tying it to the day.
+
 ## Modules
 
 Each feature lives in its own package under `internal/` ([ADR 006](../decisions/006-layered-feature-modules.md)).

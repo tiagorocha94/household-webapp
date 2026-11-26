@@ -59,11 +59,7 @@ func (l *LoginLimiter) Fail(keys ...string) {
 	defer l.mu.Unlock()
 
 	now := l.now()
-	for key, w := range l.failures {
-		if !now.Before(w.ends) {
-			delete(l.failures, key)
-		}
-	}
+	l.dropEnded(now)
 	for _, key := range keys {
 		w := l.failures[key]
 		if w.count == 0 {
@@ -74,6 +70,16 @@ func (l *LoginLimiter) Fail(keys ...string) {
 	}
 }
 
+// Prune drops the windows that have ended and returns how many it dropped. Fail
+// does the same, but only when another failure comes, so after a burst of
+// attempts the entries would otherwise stay until then.
+func (l *LoginLimiter) Prune() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return l.dropEnded(l.now())
+}
+
 // Reset forgets the failures recorded for each key, after a successful login.
 func (l *LoginLimiter) Reset(keys ...string) {
 	l.mu.Lock()
@@ -82,4 +88,16 @@ func (l *LoginLimiter) Reset(keys ...string) {
 	for _, key := range keys {
 		delete(l.failures, key)
 	}
+}
+
+// dropEnded removes the windows that ended by now. The caller holds the lock.
+func (l *LoginLimiter) dropEnded(now time.Time) int {
+	dropped := 0
+	for key, w := range l.failures {
+		if !now.Before(w.ends) {
+			delete(l.failures, key)
+			dropped++
+		}
+	}
+	return dropped
 }

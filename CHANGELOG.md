@@ -4,6 +4,9 @@ User-facing changes only. Describes what users can see and do in the application
 
 ## [Unreleased]
 
+### Background jobs
+- A running server now creates the goal allocations of a new month by itself, once a day, so it no longer has to be restarted at the start of each month. It also forgets expired login failures every 15 minutes. Each job has its own schedule (see [Background jobs](docs/architecture/overview.md#background-jobs)).
+
 ## [v0.2.0] - 2026-11-26
 
 The server can now run only some of its features, for a household that wants, say, just the cashflow.
