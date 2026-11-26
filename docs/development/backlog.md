@@ -7,6 +7,8 @@ ADRs rather than here.
 
 - Add assets no module records, such as property. Credit owed is currently
   subtracted without counting the property it financed.
+  It should be a module of its own that can be switched off like the others
+  (see [Modules](../modules/README.md)), plugging into net worth.
 
 ## Savings
 
@@ -19,6 +21,11 @@ ADRs rather than here.
 
 - Add a smoke test that migrates a database or seed from the previous release.
   Current tests apply every migration only to an empty database.
+  Run it only for release preparation, not on every PR: a workflow that builds
+  the previous release tag, starts it on the demo data to make a real database
+  and exported files, then starts the new code on them and checks the data and
+  the API answers are unchanged. It would run for `chore/prepare-*` PRs and on
+  demand, and not be a required check.
 
 ## API and security
 
