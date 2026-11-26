@@ -49,6 +49,7 @@ import (
 	savingsdetail "github.com/tiagorocha94/household-webapp/internal/savings/detail"
 	savingsservice "github.com/tiagorocha94/household-webapp/internal/savings/service"
 	savingsstore "github.com/tiagorocha94/household-webapp/internal/savings/store"
+	"github.com/tiagorocha94/household-webapp/internal/scheduler"
 	"github.com/tiagorocha94/household-webapp/internal/seed"
 	"github.com/tiagorocha94/household-webapp/internal/server"
 	"github.com/tiagorocha94/household-webapp/web"
@@ -147,7 +148,17 @@ func run(configPath string, dryRun bool) error {
 	srv := server.New(logger, buildVersion(), addr, authService, authHandler, goalsHandler, creditsHandler, investmentsHandler, savingsHandler, cashflowHandler, overviewHandler,
 		server.Options{Frontend: frontend(logger), Modules: moduleSet})
 
-	if err := srv.Start(ctx); err != nil {
+	// The daily jobs stop with the server, and before the database closes.
+	jobsCtx, stopJobs := context.WithCancel(ctx)
+	jobsDone := make(chan struct{})
+	go func() {
+		defer close(jobsDone)
+		scheduler.New(logger, dailyJobs(db, cfg.Seed.Dir, moduleSet, logger)...).Run(jobsCtx)
+	}()
+	err = srv.Start(ctx)
+	stopJobs()
+	<-jobsDone
+	if err != nil {
 		return fmt.Errorf("serve http: %w", err)
 	}
 	// The deferred close of the database runs after this line.
