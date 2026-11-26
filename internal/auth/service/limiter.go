@@ -80,6 +80,16 @@ func (l *LoginLimiter) Prune() int {
 	return l.dropEnded(l.now())
 }
 
+// Reset forgets the failures recorded for each key, after a successful login.
+func (l *LoginLimiter) Reset(keys ...string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for _, key := range keys {
+		delete(l.failures, key)
+	}
+}
+
 // dropEnded removes the windows that ended by now. The caller holds the lock.
 func (l *LoginLimiter) dropEnded(now time.Time) int {
 	dropped := 0
@@ -90,14 +100,4 @@ func (l *LoginLimiter) dropEnded(now time.Time) int {
 		}
 	}
 	return dropped
-}
-
-// Reset forgets the failures recorded for each key, after a successful login.
-func (l *LoginLimiter) Reset(keys ...string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	for _, key := range keys {
-		delete(l.failures, key)
-	}
 }
