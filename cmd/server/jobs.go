@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	authapi "github.com/tiagorocha94/household-webapp/internal/auth/api"
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/goals"
 	"github.com/tiagorocha94/household-webapp/internal/modules"
@@ -14,14 +15,29 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/seed"
 )
 
-// dailyJobs lists the work the running server does once a day, for the modules
-// that run. Start-up already does it once, so none of them asks to run at start.
-func dailyJobs(db *sql.DB, seedDir string, enabled modules.Set, logger *slog.Logger) []scheduler.Job {
-	var jobs []scheduler.Job
+// backgroundJobs lists the work the running server does by itself, each job on
+// its own schedule. Start-up already does the daily work once, so none of the
+// jobs asks to run at start.
+func backgroundJobs(db *sql.DB, seedDir string, enabled modules.Set, auth *authapi.Handler, logger *slog.Logger) []scheduler.Job {
+	jobs := []scheduler.Job{loginLimitsJob(auth)}
 	if enabled.Has(modules.Goals) {
 		jobs = append(jobs, goalAllocationsJob(db, seedDir, logger))
 	}
 	return jobs
+}
+
+// loginLimitsJob forgets the failed logins whose window has ended, so they do
+// not stay in memory after a burst of attempts. It runs as often as a window
+// lasts.
+func loginLimitsJob(auth *authapi.Handler) scheduler.Job {
+	return scheduler.Job{
+		Name:  "login limits",
+		Every: authapi.LimitPruneInterval,
+		Run: func(context.Context, time.Time) error {
+			auth.PruneLimits()
+			return nil
+		},
+	}
 }
 
 // goalAllocationsJob creates the goal allocations that have become due, so a new

@@ -101,8 +101,12 @@ func (h *harness) expectNone(t *testing.T) {
 }
 
 func recorder(name string, atStart bool) func(chan<- string) Job {
+	return every(name, 0, atStart)
+}
+
+func every(name string, interval time.Duration, atStart bool) func(chan<- string) Job {
 	return func(runs chan<- string) Job {
-		return Job{Name: name, AtStart: atStart, Run: func(context.Context, time.Time) error {
+		return Job{Name: name, Every: interval, AtStart: atStart, Run: func(context.Context, time.Time) error {
 			runs <- name
 			return nil
 		}}
@@ -138,6 +142,43 @@ func TestRunsEveryJobWhenTheDateChanges(t *testing.T) {
 
 	h.tick(t, time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC))
 	h.expect(t, "allocations", "backup")
+}
+
+func TestAJobWithAnIntervalRunsWhenThatMuchTimeHasPassedWhateverTheDate(t *testing.T) {
+	t.Parallel()
+	start0 := time.Date(2026, 11, 26, 10, 0, 0, 0, time.UTC)
+	h := start(t, start0, func(runs chan<- string) []Job {
+		return []Job{every("prune", 15*time.Minute, false)(runs), recorder("daily", false)(runs)}
+	})
+
+	h.tick(t, start0.Add(14*time.Minute))
+	h.expectNone(t)
+
+	h.tick(t, start0.Add(15*time.Minute))
+	h.expect(t, "prune")
+
+	h.tick(t, start0.Add(29*time.Minute)) // 14 minutes after its last run
+	h.expectNone(t)
+
+	h.tick(t, start0.Add(30*time.Minute))
+	h.expect(t, "prune")
+
+	// Midnight: the daily job runs, and the prune job has its own turn too.
+	h.tick(t, time.Date(2026, 11, 27, 0, 1, 0, 0, time.UTC))
+	h.expect(t, "prune", "daily")
+}
+
+func TestAnIntervalJobThatRunsAtStartCountsFromThen(t *testing.T) {
+	t.Parallel()
+	start0 := time.Date(2026, 11, 26, 10, 0, 0, 0, time.UTC)
+	h := start(t, start0, func(runs chan<- string) []Job {
+		return []Job{every("prune", time.Hour, true)(runs)}
+	})
+	h.expect(t, "prune")
+	h.tick(t, start0.Add(59*time.Minute))
+	h.expectNone(t)
+	h.tick(t, start0.Add(time.Hour))
+	h.expect(t, "prune")
 }
 
 func TestRunsOnceWhenSeveralDaysWerePassedOver(t *testing.T) {

@@ -148,12 +148,12 @@ func run(configPath string, dryRun bool) error {
 	srv := server.New(logger, buildVersion(), addr, authService, authHandler, goalsHandler, creditsHandler, investmentsHandler, savingsHandler, cashflowHandler, overviewHandler,
 		server.Options{Frontend: frontend(logger), Modules: moduleSet})
 
-	// The daily jobs stop with the server, and before the database closes.
+	// The background jobs stop with the server, and before the database closes.
 	jobsCtx, stopJobs := context.WithCancel(ctx)
 	jobsDone := make(chan struct{})
 	go func() {
 		defer close(jobsDone)
-		scheduler.New(logger, dailyJobs(db, cfg.Seed.Dir, moduleSet, logger)...).Run(jobsCtx)
+		scheduler.New(logger, backgroundJobs(db, cfg.Seed.Dir, moduleSet, authHandler, logger)...).Run(jobsCtx)
 	}()
 	err = srv.Start(ctx)
 	stopJobs()

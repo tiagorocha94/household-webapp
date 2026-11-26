@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
+
+	authapi "github.com/tiagorocha94/household-webapp/internal/auth/api"
+	authservice "github.com/tiagorocha94/household-webapp/internal/auth/service"
+	authstore "github.com/tiagorocha94/household-webapp/internal/auth/store"
 
 	"github.com/tiagorocha94/household-webapp/internal/csvstate"
 	"github.com/tiagorocha94/household-webapp/internal/database"
@@ -12,7 +17,7 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/testutil"
 )
 
-func TestDailyJobsFollowTheModulesThatRun(t *testing.T) {
+func TestBackgroundJobsFollowTheModulesThatRun(t *testing.T) {
 	t.Parallel()
 
 	db, err := database.Open(filepath.Join(t.TempDir(), "jobs-test.db"))
@@ -20,17 +25,28 @@ func TestDailyJobsFollowTheModulesThatRun(t *testing.T) {
 		t.Fatalf("database.Open() error = %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
+	auth := authapi.New(authservice.New(authstore.New(db)), testutil.Logger(), authapi.Options{})
 
-	all := dailyJobs(db, t.TempDir(), modules.Set{}, testutil.Logger())
-	if len(all) != 1 || all[0].Name != "goal allocations" || all[0].AtStart {
-		t.Errorf("jobs with every module = %+v, want the goal allocations, not at start", all)
+	names := func(set modules.Set) []string {
+		var out []string
+		for _, job := range backgroundJobs(db, t.TempDir(), set, auth, testutil.Logger()) {
+			if job.AtStart {
+				t.Errorf("job %q runs at start, but start-up already did the work", job.Name)
+			}
+			out = append(out, job.Name)
+		}
+		return out
+	}
+
+	if got, want := names(modules.Set{}), []string{"login limits", "goal allocations"}; !slices.Equal(got, want) {
+		t.Errorf("jobs with every module = %v, want %v", got, want)
 	}
 	noGoals, err := modules.NewSet([]string{modules.Cashflow, modules.Savings})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := dailyJobs(db, t.TempDir(), noGoals, testutil.Logger()); len(got) != 0 {
-		t.Errorf("jobs without goals = %+v, want none", got)
+	if got, want := names(noGoals), []string{"login limits"}; !slices.Equal(got, want) {
+		t.Errorf("jobs without goals = %v, want %v", got, want)
 	}
 }
 
