@@ -11,6 +11,12 @@ database:
 seed:
   dir: seed
 
+# Daily copies of the database, kept in dir (not the seed directory) and resolved like seed.dir.
+# Off unless keep is above zero. See docs/architecture/backups.md.
+# backup:
+#   dir: backups
+#   keep: 14
+
 # Features to run. Leave it out to run them all; the names are cashflow, goals, savings,
 # credits and investments. A module that is left out has no routes and no CSV files are used.
 # modules: [cashflow, goals]

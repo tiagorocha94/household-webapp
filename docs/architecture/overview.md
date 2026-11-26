@@ -33,6 +33,7 @@ moment. `cmd/server/jobs.go` lists them:
 | --- | --- | --- |
 | goal allocations | daily | The goals sync of start-up, on the live database, so a new month needs no restart. The goals files are then rewritten through the same locked mirror devices use, never by a full export, which could overwrite a newer file with an older snapshot. Only when the goals module runs. |
 | login limits | every 15 minutes (the failure window) | Forgets the failed logins whose window has ended, so they do not stay in memory after a burst of attempts. |
+| database backup | at start, then daily | Copies the database into `backup.dir`, when `backup.keep` is above zero ([backups](backups.md)). Last, so it holds what the jobs before it changed. |
 
 A new job is a `scheduler.Job` added to `backgroundJobs`; give it the schedule it
 needs rather than tying it to the day.

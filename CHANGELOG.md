@@ -4,6 +4,9 @@ User-facing changes only. Describes what users can see and do in the application
 
 ## [Unreleased]
 
+### Database backups
+- Keep a daily copy of the database by setting `backup` (`dir` and `keep`) in `config.yaml`. The copy is made while the server runs, at start-up and once a day, and the oldest ones beyond `keep` are removed. Without `keep` nothing is backed up.
+
 ### Background jobs
 - A running server now creates the goal allocations of a new month by itself, once a day, so it no longer has to be restarted at the start of each month. It also forgets expired login failures every 15 minutes. Each job has its own schedule (see [Background jobs](docs/architecture/overview.md#background-jobs)).
 
