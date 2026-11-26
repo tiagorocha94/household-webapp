@@ -24,7 +24,10 @@ the design in [architecture](../architecture/overview.md).
 4. Update the relevant `docs/` page when behavior changes, and `CHANGELOG.md`
    when a user can see the difference ([guidelines](changelog-guidelines.md)).
 5. Verify: `make check` (and `make lint` before pushing; `make web-check` for
-   frontend changes).
+   frontend changes). CI also runs the browser tests in `web/e2e` against the
+   built server on the demo household, once for each set of modules; locally,
+   after `make web-build build`, run `npm run e2e` in `web/` (the first time
+   `npx playwright install chromium`).
 
 ## Commits
 
