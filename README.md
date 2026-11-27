@@ -47,6 +47,19 @@ cd my-household
 /path/to/household-webapp/household-app          # or: household-app -config /path/to/config.yaml
 ```
 
+The same binary has a few commands for the phones that write data, run from the same
+directory (start the server once first, so the database exists). `household-app -help`
+lists them with the flags:
+
+```bash
+household-app device add <user> <name>   # an enrolment code for a phone
+household-app device list
+household-app device revoke <name>
+```
+
+If you wrap the binary in a small script that changes into your data directory and
+passes its arguments on, `./run.sh device list` does the same.
+
 `make run` starts the server on this repository's `config.yaml` (its `seed.dir` is `seed`,
 which does not exist here, so use it only after pointing `seed.dir` at your data):
 

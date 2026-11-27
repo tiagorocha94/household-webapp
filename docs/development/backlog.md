@@ -5,10 +5,16 @@ ADRs rather than here.
 
 ## Net worth
 
-- Add assets no module records, such as property. Credit owed is currently
-  subtracted without counting the property it financed.
-  It should be a module of its own that can be switched off like the others
-  (see [Modules](../modules/README.md)), plugging into net worth.
+- Parked: assets no module records, such as property or a car. Credit owed is
+  currently subtracted without counting the property it financed, so net worth
+  is lower than the household's real position for anyone with a mortgage.
+  Parked because the value of such an asset is a guess that nobody can state
+  exactly, so a figure typed in would make the net worth look more precise than
+  it is. Revisit if a way to value them honestly appears (for example a value the
+  person sets and dates by hand, shown apart from the recorded balances rather
+  than added into them). If it is built, it should be a module of its own that
+  can be switched off like the others (see [Modules](../modules/README.md)),
+  plugging into net worth.
 
 ## Savings
 
@@ -50,7 +56,7 @@ ADRs rather than here.
   and taxes.
 - Chores, shared lists, a household calendar and household documents: see
   [Shared household modules](#shared-household-modules).
-- Track taxes, assets and insurance policies.
+- Track taxes and insurance policies (assets are parked, see [Net worth](#net-worth)).
 
 ## Shared household modules
 
