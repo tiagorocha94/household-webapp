@@ -1,0 +1,53 @@
+name: upgrade
+
+# Checks that this code can take over the data of the previous release (scripts/upgrade-check.sh).
+# It runs for the pull requests that prepare a release (branches named chore/prepare-*), and on
+# demand from the Actions tab, optionally from an older release. It is not a required check.
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: 'Release tag to upgrade from (the latest release when empty)'
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  upgrade:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'chore/prepare-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # every release tag
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: find the release to upgrade from
+        id: previous
+        env:
+          FROM: ${{ inputs.from }}
+        run: |
+          from="${FROM:-$(git tag --list 'v*' --sort=-v:refname | head -n 1)}"
+          if [ -z "$from" ]; then
+            echo "::error::no release tag to upgrade from"
+            exit 1
+          fi
+          git rev-parse --verify --quiet "refs/tags/$from" >/dev/null || {
+            echo "::error::$from is not a tag of this repository"
+            exit 1
+          }
+          echo "from=$from" >>"$GITHUB_OUTPUT"
+          echo "Upgrading from $from"
+      - name: build the previous release
+        run: |
+          git worktree add "$RUNNER_TEMP/previous" "${{ steps.previous.outputs.from }}"
+          (cd "$RUNNER_TEMP/previous" && go build -o "$RUNNER_TEMP/household-previous" ./cmd/server/)
+      - name: build this code
+        run: go build -o "$RUNNER_TEMP/household-new" ./cmd/server/
+      - name: upgrade check
+        run: scripts/upgrade-check.sh "$RUNNER_TEMP/household-previous" "$RUNNER_TEMP/previous/demo" "$RUNNER_TEMP/household-new"

@@ -23,16 +23,6 @@ ADRs rather than here.
 - Decide which main account saved money comes from.
 - Decide whether saved amounts should contribute to the savings rate.
 
-## Operations
-
-- Add a smoke test that migrates a database or seed from the previous release.
-  Current tests apply every migration only to an empty database.
-  Run it only for release preparation, not on every PR: a workflow that builds
-  the previous release tag, starts it on the demo data to make a real database
-  and exported files, then starts the new code on them and checks the data and
-  the API answers are unchanged. It would run for `chore/prepare-*` PRs and on
-  demand, and not be a required check.
-
 ## API and security
 
 - Add per-route body limits and timeouts if more write endpoints appear. Today

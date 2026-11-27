@@ -6,7 +6,8 @@ changes at release time.
 
 ## Before tagging
 
-1. CI is green on `main`, and `make check` and `make lint` pass locally.
+1. CI is green on `main`, and `make check` and `make lint` pass locally. The
+   [upgrade check](#upgrade-check) passes on the release pull request.
 2. In [CHANGELOG.md](../../CHANGELOG.md), rename `## [Unreleased]` to
    `## [vX.Y.Z] - YYYY-MM-DD` (the day you tag) and add a new empty
    `## [Unreleased]` above it. Only user-facing changes are listed
@@ -15,6 +16,18 @@ changes at release time.
    `TestOpenAPIVersionMatchesTheLatestRelease` fails when it differs from the
    newest version in the changelog.
 4. Commit these as `chore: prepare vX.Y.Z` and push.
+
+## Upgrade check
+
+The `upgrade` workflow runs on the pull request that prepares a release (a branch
+named `chore/prepare-*`), and on demand from the Actions tab with an optional older tag
+to upgrade from. It builds the previous release, runs it on that release's `demo/`
+household, then starts this code on the same database and files, and compares what
+`scripts/snapshot-api.sh` saves and the CSV files before and after. It fails when the
+new server does not start, an answer is not 200, or anything differs. A difference
+you meant (a field this release adds) shows in the log; judge it. It is not a
+required check. Locally, with both binaries built:
+`scripts/upgrade-check.sh OLD_BINARY OLD_DEMO_DIR NEW_BINARY`.
 
 ## Tagging
 
