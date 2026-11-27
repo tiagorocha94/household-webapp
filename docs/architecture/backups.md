@@ -16,7 +16,7 @@ backup:
 | Key | Meaning |
 |-----|---------|
 | `keep` | How many daily backups to keep. Zero or left out means no backups, whatever `dir` says. A negative number is an error. |
-| `dir` | Required when `keep` is above zero. Resolved like `seed.dir` and `database.path`: relative to where the server is started, so it works the same from a data repository's `run.sh`. It must not be the seed directory. The server creates it, readable only by its owner. |
+| `dir` | Required when `keep` is above zero. Resolved like `seed.dir` and `database.path`: relative to where the server is started, so it ends up next to your data when you start the server from your own data directory. It must not be the seed directory. The server creates it, readable only by its owner. |
 
 Keep the directory outside the seed directory, and out of version control
 (`/backups/` is ignored in this repository): a backup holds password hashes,

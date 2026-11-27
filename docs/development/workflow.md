@@ -54,7 +54,7 @@ pull request to one unit of work with its tests and docs. Release tags
 3. Add CSV import, export and sync as a `SeedModule` in
    `internal/<module>/seed.go` (it satisfies `seed.Module`) and list it in
    `newSeedRunner` in `cmd/server/main.go`.
-4. Add the module's CSV files to `demo/` (invented data, so the demo and the tests cover the module). Your real data lives in its own private repository.
+4. Add the module's CSV files to `demo/` (invented data, so the demo and the tests cover the module). Real data never goes in this repository.
 5. Wire the dependencies in `cmd/server/main.go` and register the read-only
    routes in `internal/server/server.go`.
 6. Create `docs/modules/<module>/` with `overview.md`, `schema.md` and `csv.md`,

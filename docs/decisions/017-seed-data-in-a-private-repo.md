@@ -1,10 +1,10 @@
-# 017 Seed data lives in the private repository
+# 017 Seed data lives outside this repository
 
-Status: accepted and built; the code later moved to a public repository and the data to a
-separate private one (see the note at the end)
+Status: accepted and built; the code later became public and the data stayed in a
+private repository of its own (see the note at the end)
 
 Context: `seed/` holds the household's real data, and it was gitignored, so it
-had no history and no backup. The repository is private. The sensitive parts
+had no history and no backup. The repository was private at the time. The sensitive parts
 are the amounts, which a private repository is meant to hold, and the
 credentials: `users.csv` had plain passwords, `devices.csv` has token
 hashes.
@@ -28,7 +28,8 @@ first, with the command in the csv-seed doc. Whoever can read the
 repository can read every amount. The format is in
 [csv-seed.md](../architecture/csv-seed.md#userscsv).
 
-Note, later: this repository is public. The household's real data lives in its own private
-repository, which the server reads through `seed.dir`, and `/seed/` is ignored here. The
-invented household in `demo/` serves the tests and `make demo`. The points above about
-passwords and `devices.csv` still hold for the private data repository.
+Note, later: this repository is public, so it holds no real data. Whoever runs the server
+keeps their data in a directory of their own, ideally a private repository, and starts the
+server there or points `seed.dir` at it; `/seed/` is ignored here. The invented household in
+`demo/` serves the tests and `make demo`, and is the starting point for a real set of files. The points above about
+passwords and `devices.csv` still hold for your private data repository.

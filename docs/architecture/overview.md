@@ -1,6 +1,6 @@
 # Architecture
 
-household-app is a monolithic Go server that exposes a read-only JSON API under
+household-webapp is a monolithic Go server (built as the `household-app` binary) that exposes a read-only JSON API under
 `/api/v1` (the one exception is the [cashflow sync](../modules/cashflow/sync.md) endpoint for enrolled phones). It renders no HTML; it serves the frontend, which is built into the binary (`web/dist`). Data is maintained in CSV files; the server loads
 them into SQLite on startup and exports them back after sync. The frontend is a separate program in `web/` ([frontend.md](frontend.md)).
 
