@@ -75,7 +75,7 @@ run() {
 
 # snapshot NAME: saves the API answers to WORK/NAME, from the running server.
 snapshot() {
-	HOUSEHOLD_USER=alex HOUSEHOLD_PASSWORD=demo "$here/snapshot-api.sh" "$base" "$work/$1"
+	HOUSEHOLD_USER=alex HOUSEHOLD_PASSWORD=demo bash "$here/snapshot-api.sh" "$base" "$work/$1"
 }
 
 run old "$old_bin"
