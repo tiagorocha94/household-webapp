@@ -2,8 +2,8 @@
 household-app
 household-app.exe
 
-# Real data never belongs in this repository: keep it in its own private repository and
-# point seed.dir at it.
+# Real data never belongs in this repository: keep it in a directory (ideally a private
+# repository) of your own and start the server there, or point seed.dir at it.
 /seed/
 
 # Database backups (config.yaml: backup.dir)

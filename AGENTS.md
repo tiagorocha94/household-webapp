@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for AI agents working on household-app: a Go server exposing a
+Guidance for AI agents working on household-webapp (its server binary is `household-app`): a Go server exposing a
 read-only JSON API under `/api/v1` (plus the cashflow sync endpoint for enrolled phones), backed by SQLite. Data lives in CSV files
 that are imported, synced and exported on every start. The frontend is a Svelte
 app in `web/` ([ADR 009](docs/decisions/009-frontend-svelte-spa.md)).

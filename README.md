@@ -4,6 +4,12 @@ A personal application for managing household finances. It serves a read-only
 JSON API for shared goal allocation, credit contract/payment tracking, an investment portfolio and a cash-flow ledger. Data
 is maintained in CSV files; the frontend lives in `web/`.
 
+The repository is called `household-webapp`; the server it builds is the
+`household-app` binary. An Android app, `household-cashflow`, is its companion: it
+reads from the server and adds cash-flow movements (see
+[cashflow sync](docs/modules/cashflow/sync.md)). The server and the web app work on
+their own without it.
+
 ## Quick start
 
 Try it on an invented household first (it needs Go and Node):
@@ -14,14 +20,31 @@ make demo    # build the UI and server, then serve a demo household on :8081
 
 Log in as `alex` or `sam` with the password `demo`.
 
-To use your own data, keep it in a separate private repository (a `seed/` folder of CSV
-files plus a `config.yaml` whose `seed.dir` points at it), never in this one
-([ADR 017](docs/decisions/017-seed-data-in-a-private-repo.md)). Passwords in
-`users.csv` must be [bcrypt hashes](docs/architecture/csv-seed.md#userscsv). Build the
-server with `make build`, then start it from your data repository:
+### Your own data
+
+Your real data (money amounts, password hashes) never belongs in this repository
+([ADR 017](docs/decisions/017-seed-data-in-a-private-repo.md)). Keep it in a
+directory of your own, ideally a private git repository, with a `config.yaml` and a
+folder of CSV files:
+
+```text
+my-household/
+  config.yaml        # seed.dir: seed (the default), and any other settings
+  seed/              # your CSV files; start from the ones in demo/
+    users.csv
+    cashflow_movements.csv
+    ...
+```
+
+Passwords in `users.csv` must be [bcrypt hashes](docs/architecture/csv-seed.md#userscsv).
+Build the server with `make build`, then start it from your directory. The server
+reads `config.yaml` from where it is started (or the file named by `-config`), and
+every relative path in it (`seed.dir`, `database.path`, `backup.dir`) is relative to
+that same place, so the database and the backups end up next to your data:
 
 ```bash
-cd ../household-data && ./run.sh ../household-webapp/household-app
+cd my-household
+/path/to/household-webapp/household-app          # or: household-app -config /path/to/config.yaml
 ```
 
 `make run` starts the server on this repository's `config.yaml` (its `seed.dir` is `seed`,
@@ -78,12 +101,15 @@ database:
   path: household.db
 seed:
   dir: seed
+# backup:               # daily copies of the database; off unless keep is above zero
+#   dir: backups
+#   keep: 14
 log:
   level: info
 # modules: [cashflow, goals]  # which features run; leave it out to run all of them
 ```
 
-`modules` chooses the features the server runs: `cashflow`, `goals`, `savings`, `credits`, `investments`. A module that is left out has no API routes (they answer 404), its CSV files are neither read nor written, and the web app hides its pages. `GET /api/v1/info` lists the modules that run. An unknown name stops the server at start. More in [docs/modules](docs/modules/README.md).
+`backup` keeps daily copies of the database itself, see [database backups](docs/architecture/backups.md). `modules` chooses the features the server runs: `cashflow`, `goals`, `savings`, `credits`, `investments`. A module that is left out has no API routes (they answer 404), its CSV files are neither read nor written, and the web app hides its pages. `GET /api/v1/info` lists the modules that run. An unknown name stops the server at start. More in [docs/modules](docs/modules/README.md).
 
 The server listens on localhost only. To reach it from another machine set `server.host` to `0.0.0.0`, but note there is no TLS. If you put it behind a TLS proxy, set `server.secure_cookies: true`.
 

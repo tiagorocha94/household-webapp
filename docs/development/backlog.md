@@ -40,7 +40,7 @@ ADRs rather than here.
 ## Product
 
 - Recalculate remaining goal allocations when extra money is added.
-- Complete a goal from household-app (only from its final month onward, and only
+- Complete a goal from the app (only from its final month onward, and only
   once fully allocated), which today is done by hand in the data
   ([ADR 023](../decisions/023-goals-are-closed-by-hand.md)).
 - Let a user dismiss one old notification that is not worth fixing. Today an
@@ -115,9 +115,11 @@ beyond what is written; open points are settled when one of them is picked.
   backed up.
 
 **Backups**
-- Out of scope for now. SQLite stays. Since the CSV files were the off-machine
-  copy, new modules need another (for example a scheduled dump committed to the
-  private data repository), and a different database would be a separate decision.
+- SQLite stays, and a different database would be a separate decision. The CSV
+  files were the off-machine copy, which a module that lives only in the database
+  does not have; the [database backup](../architecture/backups.md) covers it,
+  since it copies the whole database. Open: getting those backups off the
+  machine, which is left to the person who runs the server for now.
 
 ## Architecture
 
@@ -127,4 +129,4 @@ computed fields appear would create boilerplate without benefit.
 
 The completed phone-app work is documented in
 [ADRs 020–022](../decisions/020-the-phone-app-is-the-household-app.md) and in
-the household-cashflow design guide.
+the design guide of the mobile app (`household-cashflow`).

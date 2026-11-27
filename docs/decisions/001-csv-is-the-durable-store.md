@@ -26,6 +26,6 @@ rewritten after it.
 Consequences: editing a file and restarting is how data changes, and removing
 a row from a file removes it from the database. A malformed file cannot
 overwrite good ones. Because the database can be rebuilt from the files
-(`make reset`), back up the seed directory; it is under version control in a separate private
-repository ([ADR 017](017-seed-data-in-a-private-repo.md)), with bcrypt hashes
+(`make reset`), back up the seed directory; keep it under version control in a private
+repository of your own ([ADR 017](017-seed-data-in-a-private-repo.md)), with bcrypt hashes
 in `users.csv` and token hashes in `devices.csv`. The exact rules are in [csv-seed.md](../architecture/csv-seed.md).

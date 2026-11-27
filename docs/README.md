@@ -37,7 +37,7 @@
 - [014 Savings are their own module](decisions/014-savings-module.md)
 - [015 Enrolled devices read the budget by group](decisions/015-devices-read-budget.md)
 - [016 Home says what needs a look](decisions/016-home-says-what-needs-a-look.md)
-- [017 Seed data lives in the private repository](decisions/017-seed-data-in-a-private-repo.md)
+- [017 Seed data lives outside this repository](decisions/017-seed-data-in-a-private-repo.md)
 - [018 Cash is worked out from typed bank balances](decisions/018-cash-balance-from-typed-balances.md)
 - [019 Enrolled devices read their owner's cash balance](decisions/019-devices-read-their-own-balance.md)
 - [020 The phone app is the household app](decisions/020-the-phone-app-is-the-household-app.md)

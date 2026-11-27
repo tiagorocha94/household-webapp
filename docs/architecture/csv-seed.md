@@ -11,8 +11,8 @@ migrate -> import (mirror CSV) -> sync -> export -> serve
 ```
 
 The directory is `seed.dir` in `config.yaml` (default `seed`). It holds your real
-data, which lives in its own private repository, never in this one
-([ADR 017](../decisions/017-seed-data-in-a-private-repo.md)); `/seed/` is
+data, which you keep outside this repository, ideally in a private repository
+of your own ([ADR 017](../decisions/017-seed-data-in-a-private-repo.md)); `/seed/` is
 ignored by git here so it cannot be committed by mistake. For smoke and
 end-to-end tests use the invented household in `demo/` (see below). The server
 rewrites the files it exports, so tests and `make demo` work on a copy. Any failing step
