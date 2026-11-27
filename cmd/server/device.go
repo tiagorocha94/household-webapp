@@ -17,11 +17,15 @@ import (
 	"github.com/tiagorocha94/household-webapp/internal/database"
 )
 
-const deviceUsage = `usage:
-  household-app device add [-config file] <user> <name>   make an enrolment code for a phone
+const (
+	// deviceCommands lists the device commands, for the usage of both the
+	// server's own help and the device command.
+	deviceCommands = `  household-app device add [-config file] <user> <name>   make an enrolment code for a phone
   household-app device list [-config file]                 list devices
   household-app device revoke [-config file] <name>        stop a device from working
 `
+	deviceUsage = "usage:\n" + deviceCommands
+)
 
 // runDevice runs the "device" command: args are what follows the word
 // "device". It manages the phones that write data, working on the database

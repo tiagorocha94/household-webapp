@@ -68,6 +68,7 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to the configuration file")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	dryRun := flag.Bool("dry-run", false, "report what starting would change in the database and CSV files, change nothing, and exit")
+	flag.Usage = func() { printUsage(flag.CommandLine.Output(), flag.CommandLine) }
 	flag.Parse()
 
 	if *showVersion {
