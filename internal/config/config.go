@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 
@@ -20,6 +21,7 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Seed     SeedConfig     `yaml:"seed"`
+	Backup   BackupConfig   `yaml:"backup"`
 	Log      LogConfig      `yaml:"log"`
 	// Modules lists the feature modules to run: cashflow, goals, savings,
 	// credits and investments. Leave it out to run all of them.
@@ -50,10 +52,26 @@ type SeedConfig struct {
 	Dir string `yaml:"dir"`
 }
 
+// BackupConfig holds the settings of the daily database backup. Backups are
+// off unless Keep is above zero.
+type BackupConfig struct {
+	// Dir is where the backup files are written, resolved like seed.dir and
+	// database.path: relative to where the server is started. It must not be
+	// the seed directory.
+	Dir string `yaml:"dir"`
+	// Keep is how many daily backups to keep. Zero or unset turns backups off.
+	Keep int `yaml:"keep"`
+}
+
 // LogConfig holds logging settings.
 type LogConfig struct {
 	// Level is one of debug, info, warn or error.
 	Level string `yaml:"level"`
+}
+
+// Enabled reports whether backups are turned on.
+func (b BackupConfig) Enabled() bool {
+	return b.Keep > 0
 }
 
 // ModuleSet returns the modules to run. Load has already checked the names.
@@ -94,11 +112,31 @@ func validate(cfg *Config) error {
 	if _, err := modules.NewSet(cfg.Modules); err != nil {
 		return fmt.Errorf("modules: %w", err)
 	}
+	if err := validateBackup(cfg); err != nil {
+		return err
+	}
 	if raw := cfg.Server.PublicURL; raw != "" {
 		u, err := url.Parse(raw)
 		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			return fmt.Errorf("server.public_url %q must be an http or https address", raw)
 		}
+	}
+	return nil
+}
+
+func validateBackup(cfg *Config) error {
+	b := cfg.Backup
+	if b.Keep < 0 {
+		return fmt.Errorf("backup.keep %d must be zero (no backups) or more", b.Keep)
+	}
+	if !b.Enabled() {
+		return nil
+	}
+	if b.Dir == "" {
+		return errors.New("backup.dir is required when backup.keep is above zero")
+	}
+	if filepath.Clean(b.Dir) == filepath.Clean(cfg.Seed.Dir) {
+		return fmt.Errorf("backup.dir %q must not be the seed directory", b.Dir)
 	}
 	return nil
 }

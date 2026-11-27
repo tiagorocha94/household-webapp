@@ -153,7 +153,7 @@ func run(configPath string, dryRun bool) error {
 	jobsDone := make(chan struct{})
 	go func() {
 		defer close(jobsDone)
-		scheduler.New(logger, backgroundJobs(db, cfg.Seed.Dir, moduleSet, authHandler, logger)...).Run(jobsCtx)
+		scheduler.New(logger, backgroundJobs(db, cfg.Seed.Dir, moduleSet, authHandler, cfg.Backup, logger)...).Run(jobsCtx)
 	}()
 	err = srv.Start(ctx)
 	stopJobs()

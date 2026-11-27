@@ -34,7 +34,9 @@ make reset   # delete the database first, then run
 
 Startup migrates the database, mirrors the CSV files into it, runs sync and
 exports the files again. See [CSV seed and export](docs/architecture/csv-seed.md);
-use `household-app -dry-run` to preview the changes without writing anything.
+use `household-app -dry-run` to preview the changes without writing anything. To also
+keep daily copies of the database itself, set `backup` in `config.yaml`
+([database backups](docs/architecture/backups.md)).
 
 The UI is embedded in the server binary. `make run` installs its Node packages
 when needed. Without Node or Make, `go run ./cmd/server/` serves only the API.

@@ -116,3 +116,51 @@ func TestLoadPublicURL(t *testing.T) {
 		}
 	}
 }
+
+func TestBackupsAreOffByDefault(t *testing.T) {
+	t.Parallel()
+
+	for name, content := range map[string]string{
+		"no section":     "",
+		"dir only":       "backup:\n  dir: backups\n",
+		"keep zero":      "backup:\n  dir: backups\n  keep: 0\n",
+		"keep zero only": "backup:\n  keep: 0\n",
+	} {
+		cfg, err := Load(writeConfig(t, content))
+		if err != nil {
+			t.Fatalf("%s: Load() error = %v", name, err)
+		}
+		if cfg.Backup.Enabled() {
+			t.Errorf("%s: backups enabled, want off", name)
+		}
+	}
+}
+
+func TestLoadReadsTheBackupSettings(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := Load(writeConfig(t, "backup:\n  dir: backups\n  keep: 14\n"))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Backup.Enabled() || cfg.Backup.Dir != "backups" || cfg.Backup.Keep != 14 {
+		t.Fatalf("backup = %+v", cfg.Backup)
+	}
+}
+
+func TestLoadRejectsABadBackupSetup(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct{ content, want string }{
+		"negative keep":      {"backup:\n  dir: b\n  keep: -1\n", "backup.keep"},
+		"keep without a dir": {"backup:\n  keep: 7\n", "backup.dir is required"},
+		"the seed directory": {"seed:\n  dir: data\nbackup:\n  dir: ./data/\n  keep: 7\n", "seed directory"},
+		"the default seed":   {"backup:\n  dir: seed\n  keep: 7\n", "seed directory"},
+	}
+	for name, tc := range cases {
+		_, err := Load(writeConfig(t, tc.content))
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%s: Load() error = %v, want it to mention %q", name, err, tc.want)
+		}
+	}
+}

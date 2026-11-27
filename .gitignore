@@ -6,6 +6,9 @@ household-app.exe
 # point seed.dir at it.
 /seed/
 
+# Database backups (config.yaml: backup.dir)
+/backups/
+
 # The demo run's database and data copy (make demo), and the e2e servers' copies
 .demo/
 .demo-e2e-*/
